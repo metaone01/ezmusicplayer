@@ -8,7 +8,6 @@ from time import sleep,time
 from queue import Queue
 from threading import Thread
 from sched import scheduler
-import sipbuild
 Path = str
 # win_animation = WindowAnimation()
 # obj_animation = ObjectAnimation()
@@ -95,7 +94,7 @@ class NotificationWindow:
 
     def run(self):
         while True:
-            text, icon, noti_name, alive_time, animation_time = self.queue.get()
+            text, icon, noti_name, alive_time, animation_time = self.queue.get(2)
             log.info(f"发送了新通知:{text}")
             # self.fadeIn()
             if alive_time is None:
@@ -150,34 +149,25 @@ class NotificationWindow:
                 # obj_animation.fadeIn(frame,Mode.LINEAR, animation_time)
                 # sleep(alive_time - 2 * animation_time)
                 # obj_animation.fadeOut(frame,Mode.LINEAR, animation_time)
-                
-                def delayFunc():
-                    nonlocal frame,self
+                def delayFunc(self,frame,alive_time,animation_time):
+                    sleep(alive_time-2*animation_time)
                     log.info("通知渐出")
                     frame.hide()
                     self.layout.removeWidget(frame)
-                    sipbuild.delete(frame)
-                self.schedule.enter(2,0,log.info,("通知渐出",))
-                self.schedule.enter(2,1,frame.hide)
-                self.schedule.enter(2,2,self.layout.removeWidget,(frame,))
-                self.schedule.enter(2,3,self.window.repaint)
+                    self.window.repaint()
+                Thread(target=delayFunc,args=(self,frame,alive_time,animation_time),daemon=True).start()
             else:
                 if noti_name is not None:
                     label.setObjectName(noti_name)
-                log.info("通知渐入")
-                self.layout.addWidget(label)
-                label.show()
-                self.window.repaint()
-                def delayFunc():
-                    nonlocal label,self
+                def delayFunc(self,label,alive_time,animation_time):
                     log.info("通知渐出")
-                    label.hide()
-                    self.layout.removeWidget(label)
-                    self.layout.addItem()
-                    sipbuild.delete(label)
-                self.schedule.enter(2,0,delayFunc)
+                    sleep(alive_time - 2 * animation_time)
+                    self.layout.addWidget(label)
+                    label.show()
+                    self.window.repaint()
+                Thread(target=delayFunc,args=(self,label,alive_time,animation_time),daemon=True).start()
+                # self.schedule.enter(2,0,delayFunc)
                 # ObjectAnimation(label).fadeIn(Mode.LINEAR, animation_time)
-                # sleep(alive_time - 2 * animation_time)
                 # ObjectAnimation(label).fadeOut(Mode.LINEAR, animation_time)
             self.queue.task_done()
             # if self.items_count == 0:

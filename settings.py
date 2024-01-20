@@ -16,7 +16,8 @@ with open("./settings/settings.json", encoding="utf-8") as f:
 with open(f"./languages/{SETTINGS['language']}.json", encoding="utf-8") as f:
     LANG: dict[str, str] = json.load(f)
 
-
+SKIN = SETTINGS["skin"]
+DEBUG = SETTINGS["debug"]
 def qssReader(skin: str, name: str):
     with open(f"./skin/{skin}/{name}.qss", encoding="utf-8") as f:
         return f.read()

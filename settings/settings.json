@@ -1,3 +1,5 @@
 {
-    "language":"zh-CN"
+    "language": "zh-CN",
+    "debug": true,
+    "skin": "default-light"
 }
