@@ -1,0 +1,4 @@
+/TEMP/*
+logs
+__pycache__
+.mypy_cache

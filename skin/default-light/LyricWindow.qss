@@ -1,0 +1,6 @@
+QWidget#LyricWindow {}
+QLabel#LyricWindow-Label {
+    font-size:40px;
+    font:{"Arial","system-ui"};
+    color:rgb(0,255,255)
+}

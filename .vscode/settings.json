@@ -1,0 +1,16 @@
+{
+    "python.analysis.typeCheckingMode": "off",
+    "cSpell.words": [
+        "APIC",
+        "astype",
+        "musiclist",
+        "musicplayer",
+        "noti",
+        "Pixmap",
+        "pydub",
+        "TALB",
+        "tinytag",
+        "TRCK",
+        "USLT"
+    ]
+}

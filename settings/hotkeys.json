@@ -1,0 +1,11 @@
+{
+    "MusicPlayer": {
+        "volume_up":"ctrl+alt+up",
+        "volume_down":"ctrl+alt+down",
+        "next":"ctrl+alt+right",
+        "prev":"ctrl+alt+left",
+        "pause":"ctrl+alt+space",
+        "toggle_lyric":"ctrl+alt+d",
+        "close_main_window":"ctrl+alt+m"
+    }
+}
