@@ -1,9 +1,9 @@
 QWidget#NotificationWindow {}
 QLabel {
     font-size:20px;
-    color:rgb(0,200,200)
+    color:white
 }
 QFrame#Notification {
-    background-color:rgba(255,255,255, 0.3)
+    background-color:rgba(0,0,0, 0.3)
 }
 QLabel#MusicInfo {}

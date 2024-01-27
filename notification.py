@@ -2,7 +2,7 @@ import pylogger.pylogger as log
 import PySide6.QtCore as Core
 import PySide6.QtGui as Gui
 import PySide6.QtWidgets as Widgets
-from settings import LANG, SysInfo, qssReader
+from settings import LANG, SKIN, SysInfo, qssReader
 # from animation import ObjectAnimation, WindowAnimation, Mode
 from time import sleep,time
 from queue import Queue
@@ -15,7 +15,6 @@ Path = str
 class NotificationWindow:
     def __init__(
         self,
-        skin: str,
         queue: Queue,
         auto_hide: bool = True,
         default_show_time: int = 5,
@@ -38,7 +37,7 @@ class NotificationWindow:
         self.remain_time: int = self.default_show_time
         self.fade_in: bool = fade_in
         self.fade_out: bool = fade_out
-        self.STYLESHEET = qssReader(skin, "NotificationWindow")
+        self.STYLESHEET = qssReader(SKIN, "NotificationWindow")
         self.queue = queue
         self.window_init()
         self.window.setStyleSheet(self.STYLESHEET)
@@ -94,7 +93,7 @@ class NotificationWindow:
 
     def run(self):
         while True:
-            text, icon, noti_name, alive_time, animation_time = self.queue.get(2)
+            text, icon, noti_name, alive_time, animation_time = self.queue.get()
             log.info(f"发送了新通知:{text}")
             # self.fadeIn()
             if alive_time is None:
@@ -104,7 +103,7 @@ class NotificationWindow:
             label = Widgets.QLabel()
             label.setText(text)
             label.setWordWrap(True)
-            label.setBaseSize(Core.QSize(self.width,100))
+            label.setBaseSize(Core.QSize(self.width-2,100))
             label.setSizePolicy(Widgets.QSizePolicy.Policy.Expanding,Widgets.QSizePolicy.Policy.Preferred)
             if icon is not None:
                 if type(icon) is bytes:
@@ -123,7 +122,7 @@ class NotificationWindow:
                     )
                 )
                 opacity = Widgets.QGraphicsOpacityEffect()
-                opacity.setOpacity(0.3)
+                opacity.setOpacity(0.5)
                 icon.setGraphicsEffect(opacity)
                 sub_layout = Widgets.QHBoxLayout()
                 frame = Widgets.QFrame()

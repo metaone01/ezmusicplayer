@@ -1,6 +1,6 @@
 import functools
 from queue import Queue
-from typing import Callable
+from typing import Any, Callable
 import PySide6.QtCore as Core
 import PySide6.QtGui as Gui
 import PySide6.QtWidgets as Widgets
@@ -14,9 +14,10 @@ from pydub import AudioSegment  # type:ignore
 from pydub.playback import make_chunks  # type:ignore
 from mutagen import File
 import random
+
 # from animation import WindowAnimation, Mode,ObjectAnimation
 import pylogger.pylogger as log
-from settings import LANG, SysInfo, qssReader
+from settings import HOTKEYS, LANG, SKIN, SysInfo, qssReader
 from notification import append
 
 TITLE = "TIT2"
@@ -26,13 +27,45 @@ TRACK = "TRCK"
 LYRIC = "USLT::XXX"
 COVER = "APIC:"
 with open("./settings/musiclist.json", encoding="utf-8") as f:
-    MUSIC_LIST = json.load(f)
+    MUSIC_LIST: list = json.load(f)
+
+with open("./settings/musicplayer.json", encoding="utf-8") as f:
+    _SETTINGS: dict = json.load(f)
+
+def changeSetting(key: str, value: Any):
+    global _SETTINGS
+    _SETTINGS[key] = value
+    with open("./settings/musicplayer.json", "w", encoding="utf-8") as f:
+        json.dump(_SETTINGS, f)
 
 
-music_random = True
-if music_random is True:
-    random.shuffle(MUSIC_LIST)
+class PlayMode:
+    repeat = "repeat"
+    sequential = "sequential"
+    loop = "loop"
+    random = "random"
 
+    def get(self):
+        mode = _SETTINGS["mode"]
+        if hasattr(self, mode):
+            return self.__getattribute__(mode)
+        else:
+            log.fatal("意外的播放模式,请检查设置<MusicPlayer_PlayMode>是否正确配置")
+            os.abort()
+
+
+class Unknown:
+    text: list[str] = [LANG["Unknown"]]
+    data: str = LANG["Unknown"]
+
+
+MUSICS = dict()
+for audio in MUSIC_LIST:
+    info = File(audio)
+    tags: dict = info.__dict__["tags"]
+    title = tags.get(TITLE, Unknown).text[0]
+    artist = tags.get(ARTIST, Unknown).text[0]
+    MUSICS[audio] = f"{title} - {artist}"
 # win_animation = WindowAnimation()
 # obj_animation = ObjectAnimation()
 
@@ -171,18 +204,6 @@ class LyricWindow:
         # obj_animation.fadeOut(self.label,Mode.LINEAR, self.animation_time)
         # self.label_lock = False
         self.label.hide()
-    @property
-    def styleSheetDict(self):
-        return {
-            k: v
-            for style_sheet in self.label.styleSheet().split(";")
-            for k, v in style_sheet.split(":")
-        }
-
-    def changeStyleSheet(self, style_sheet: dict):
-        self.label.setStyleSheet(
-            ";".join([k + ":" + v for k, v in style_sheet.items()])
-        )
 
     def resizeWindow(self, new_width: int, new_height: int):
         log.info(
@@ -300,40 +321,153 @@ class MusicSyncTimer:
 
 
 class MusicPlayer:
-    def __init__(self, skin: str, noti_queue: Queue) -> None:
-        self.lyric_thread: Thread
-        self.i = 0
-        self.skin = skin
+
+    def __init__(self, noti_queue: Queue) -> None:
+        self.modes = [
+            (PlayMode.repeat,Gui.QPixmap(f'./skins/{SKIN}/image/MusicPlayer/repeat.png')),
+            (PlayMode.sequential,Gui.QPixmap(f'./skins/{SKIN}/image/MusicPlayer/sequential.png')),
+            (PlayMode.loop,Gui.QPixmap(f'./skins/{SKIN}/image/MusicPlayer/loop.png')),
+            (PlayMode.random,Gui.QPixmap(f'./skins/{SKIN}/image/MusicPlayer/random.png'))
+        ]
+        self.lyric_thread: Thread  # warning:only for hint
+        self.init()
+        self.terminated = False
+        self.last_music = _SETTINGS["last_music"]
+        self.hotkeys = HOTKEYS["MusicPlayer"]
+        self.getMusicList()
+        self.music_count = 0
         self.noti_queue = noti_queue
-        self.window = Widgets.QWidget()  # TODO
-        self.icon = Gui.QImage()  # TODO
-        self.layout = Widgets.QHBoxLayout()  # TODO
-        self.label = Widgets.QLabel()  # TODO
-        self.prev_btn = Widgets.QPushButton()  # TODO
-        self.prev_btn = Widgets.QPushButton()  # TODO
+        self.window.show()
         self.play = MusicSyncTimer()
-        self.lyric = LyricWindow(self.play, self.skin)
+        self.lyric = LyricWindow(self.play, SKIN)
         self.lyric.show()
-        self.thread = Thread(target=self.run, name="MusicPlayer")
-        self.thread.start()
-        with open("./settings/hotkeys.json") as f:
-            self.hotkeys = json.load(f)["MusicPlayer"]
+        self.sub_thread = Thread(target=self.run, name="MusicPlayer")
+        self.sub_thread.start()
         self.hotkeyRegister()
 
+    @property
+    def mode(self):
+        return PlayMode().get()
+
+    def init(self):
+        self.window = Widgets.QWidget()
+        self.icon = Widgets.QLabel()
+        self.layout = Widgets.QHBoxLayout()
+        self.label = Widgets.QLabel()
+        self.prev_btn = Widgets.QPushButton()
+        self.prev_icon = Gui.QPixmap(f"./skin/{SKIN}/image/MusicPlayer/prev.png")
+        self.pause_btn = Widgets.QPushButton()
+        self.pause_icon = Gui.QPixmap(f"./skin/{SKIN}/image/MusicPlayer/pause.png")
+        self.resume_icon = Gui.QPixmap(f"./skin/{SKIN}/image/MusicPlayer/play.png")
+        self.next_btn = Widgets.QPushButton()
+        self.next_icon = Gui.QPixmap(f"./skin/{SKIN}/image/MusicPlayer/next.png")
+        self.volume = Widgets.QWidget()
+        self.volume_btn = Widgets.QPushButton()
+        self.volume_icon = Gui.QPixmap(f"./skin/{SKIN}/image/MusicPlayer/volume.png")
+        self.mode_btn = Widgets.QPushButton()
+        self.mode_icon = Gui.QPixmap(f"./skin/{SKIN}/image/MusicPlayer/{self.mode}.png")
+        self.list_btn = Widgets.QPushButton()
+        self.list_icon = Gui.QPixmap(f"./skin/{SKIN}/image/MusicPlayer/list.png")
+        self.list = Widgets.QWidget()
+        self.list_layout = Widgets.QVBoxLayout()
+        self.max_width, self.max_height = SysInfo.getDisplayGeometry()
+        self.window.setGeometry(Core.QRect(self.max_width // 2 - 128, 0, 128, 50))
+        self.volume.setGeometry(Core.QRect(self.max_width // 2 - 34, 0, 30, 20))
+        self.list.setGeometry(Core.QRect(self.max_width // 2, 0, 50, 100))#BUG
+        self.prev_btn.clicked.connect(self.prevMusic)
+        self.pause_btn.clicked.connect(self.toggleMusic)
+        self.next_btn.clicked.connect(self.nextMusic)
+        self.list_btn.clicked.connect(self.toggleMusicList)
+        self.mode_btn.clicked.connect(self.switchMode)
+        self.prev_btn.setIcon(self.prev_icon)
+        self.pause_btn.setIcon(self.pause_icon)
+        self.next_btn.setIcon(self.next_icon)
+        self.volume_btn.setIcon(self.volume_icon)
+        self.mode_btn.setIcon(self.mode_icon)#BUG
+        self.list_btn.setIcon(self.list_icon)
+        self.window.setStyleSheet(f"./skin/{SKIN}/MusicPlayer_Main.qss")#TODO
+        self.window.setWindowFlags(
+            self.window.windowFlags()
+            | Core.Qt.WindowType.FramelessWindowHint
+            | Core.Qt.WindowType.Tool
+            | Core.Qt.WindowType.WindowStaysOnTopHint
+        )
+        self.window.setLayout(self.layout)
+        self.layout.addWidget(self.icon)
+        self.layout.addWidget(self.label)
+        self.layout.addWidget(self.prev_btn)
+        self.layout.addWidget(self.pause_btn)
+        self.layout.addWidget(self.next_btn)
+        self.layout.addWidget(self.volume_btn)
+        self.layout.addWidget(self.mode_btn)
+        self.layout.addWidget(self.list_btn)
+        self.volume.setStyleSheet(f"./skin/{SKIN}/MusicPlayer_Volume.qss")
+        self.list.setStyleSheet(f"./skin/{SKIN}/MusicPlayer_Musiclist.qss")
+        self.list.setWindowFlags(
+            self.window.windowFlags()
+            | Core.Qt.WindowType.FramelessWindowHint
+            | Core.Qt.WindowType.Tool
+            | Core.Qt.WindowType.WindowStaysOnTopHint
+        )
+        self.list.setLayout(self.list_layout)
+        for file, name in MUSICS.items():
+            new = Widgets.QPushButton()
+            new.setObjectName("MusicListButton")
+            new.setText(name)
+            new.clicked.connect(lambda: self.playMusic(file))#BUG
+            self.list_layout.addWidget(new)
+
+    def getMusicList(self, file: str | None = None):
+        mode = self.mode
+        if file:
+            self.last_music = file
+        else:
+            self.music_count = 0
+        if self.last_music == '':
+            self.last_music = MUSIC_LIST[0]
+        if mode == PlayMode.repeat:
+            self.cur_musiclist = [self.last_music]
+        elif mode == PlayMode.sequential:
+            if file:
+                self.cur_musiclist = list()
+            else:
+                self.cur_musiclist.insert(self.music_count + 1, self.last_music)
+        elif mode == PlayMode.loop:
+            if file:
+                self.cur_musiclist = list()
+            else:
+                self.cur_musiclist.insert(self.music_count + 1, self.last_music)
+        elif mode == PlayMode.random:
+            cur_musiclist = MUSIC_LIST
+            random.shuffle(cur_musiclist)
+            self.cur_musiclist = cur_musiclist
+
+    def toggleMusicList(self):
+        if self.list.isHidden():
+            self.list.show()
+            log.info("显示了播放列表")
+        else:
+            self.list.hide()
+            log.info("隐藏了播放列表")
+
+    def playMusic(self, file):
+        self.getMusicList(file)
+        self.nextMusic()
+
     def run(self) -> None:
-        while True:
+        while not self.terminated:
             self.lyric.refresh = True
-            music_path, lyric_path = MUSIC_LIST[self.i]
+            music_path = self.cur_musiclist[self.music_count]
             self.audio_analyzer_thread = Thread(
                 target=self.AudioAnalyzer,
                 name="_MusicNotificationWindow",
-                args=[music_path, self.lyric.setLyric],
+                args=(music_path,),
                 daemon=True,
             )
             self.play_thread = Thread(
                 target=self.play.play,
                 name="_PlayMusic",
-                args=[music_path],
+                args=(music_path,),
                 daemon=True,
             )
             self.recreateLyricThread()
@@ -341,9 +475,12 @@ class MusicPlayer:
             self.play_thread.start()
             self.audio_analyzer_thread.join(0)
             self.play_thread.join()
-            self.i += 1
-            if self.i > len(MUSIC_LIST) - 1:
-                self.i -= len(MUSIC_LIST)
+            self.music_count += 1
+            if self.music_count > len(self.cur_musiclist) - 1:
+                self.getMusicList()
+            while len(self.cur_musiclist) == 0:
+                self.getMusicList()
+                sleep(1)
 
     def recreateLyricThread(self, toggle: bool = False):
         if self.lyric.showed:
@@ -360,45 +497,53 @@ class MusicPlayer:
         self.lyric_thread.start()
         self.lyric_thread.join(0)
 
-    def AudioAnalyzer(self, audio, lyric_callback: Callable):
+    def AudioAnalyzer(self, audio: str):
+        class Unknown:
+            text: list[str] = [LANG["Unknown"]]
+            data: str = LANG["Unknown"]
+
+        class UnknownLyric:
+            text: str = LANG["Unknown"]
+
         log.info(f"正在读取{audio}")
         info = File(audio)
         tags: dict = info.__dict__["tags"]
-
-        class Unknown:
-            text = [LANG["Unknown"]]
-            data = LANG["Unknown"]
-
-        class UnknownLyric:
-            text = LANG["Unknown"]
-
-        length = info.info.length
-        log.info(f"获取到时长: {length}s")
-        bitrate = info.info.bitrate // 1000
-        log.info(f"获取到比特率: {bitrate}Kbps")
-        title = tags.get(TITLE, Unknown).text[0]
-        log.info(f"获取到标题: {title}")
-        artist = tags.get(ARTIST, Unknown).text[0]
-        log.info(f"获取到艺术家: {artist}")
-        album = tags.get(ALBUM, Unknown).text[0]
-        log.info(f"获取到专辑: {album}")
-        track = tags.get(TRACK, Unknown).text[0]
-        log.info(f"获取到音轨数: {track}")
-        cover = tags.get(COVER, Unknown).data
+        self.length = info.info.length
+        log.info(f"获取到时长: {self.length}s")
+        self.bitrate = info.info.bitrate // 1000
+        log.info(f"获取到比特率: {self.bitrate}Kbps")
+        self.title = tags.get(TITLE, Unknown).text[0]
+        log.info(f"获取到标题: {self.title}")
+        self.artist = tags.get(ARTIST, Unknown).text[0]
+        log.info(f"获取到艺术家: {self.artist}")
+        self.album = tags.get(ALBUM, Unknown).text[0]
+        log.info(f"获取到专辑: {self.album}")
+        self.track = tags.get(TRACK, Unknown).text[0]
+        log.info(f"获取到音轨数: {self.track}")
+        self.cover_data = tags.get(COVER, Unknown).data
         log.info(f"获取到封面")
         lyric = tags.get(LYRIC, UnknownLyric).text
         log.info(f"获取到歌词")
-        lyric = f"[0:-1]{title} - {artist}\n[0:-1]{album}\n" + lyric
-        lyric_callback(lyric)
+        self.lyric_text = (
+            f"[0:-1]{self.title} - {self.artist}\n[0:-1]{self.album}\n" + lyric
+        )
+        self.lyric.setLyric(self.lyric_text)
+        icon = Gui.QImage()
+        icon.loadFromData(self.cover_data)
+        self.icon.setPixmap(
+            Gui.QPixmap.fromImage(
+                icon.scaled(Core.QSize(64, 64), Core.Qt.AspectRatioMode.KeepAspectRatio)
+            )
+        )
         append(
             self.noti_queue,
-            f"{LANG['Now Playing']}:{title}\n{LANG['Artist']}:{artist}\n{LANG['Album']}:{album}",
-            cover,
+            f"{LANG['Now Playing']}:{self.title}\n{LANG['Artist']}:{self.artist}\n{LANG['Album']}:{self.album}",
+            self.cover_data,
             "MusicInfoNotification",
         )
 
     def prevMusic(self):
-        self.i -= 2
+        self.music_count -= 2
         self.play.stop()
         log.info("切换到上一首歌曲")
 
@@ -406,11 +551,32 @@ class MusicPlayer:
         self.play.stop()
         log.info("切换到下一首歌曲")
 
+    def switchMode(self):
+        new_mode:int|None = None
+        for _index,i in enumerate(self.modes):
+            if i[0] == self.mode:
+                new_mode=_index+1
+                break
+        if new_mode >= len(self.modes):
+            new_mode = 0
+        changeSetting("mode", self.modes[new_mode][0])
+        self.mode_btn.setIcon(self.modes[new_mode][1])
+        self.getMusicList()
+        log.info(f"修改播放模式为:{self.mode}")
+
     def toggleMusic(self):
         if self.play.paused:
             self.play.resume()
+            self.pause_btn.setIcon(self.pause_icon)
         else:
             self.play.pause()
+            self.pause_btn.setIcon(self.resume_icon)
+
+    def toggleMainWindow(self):
+        if self.window.isHidden():
+            self.window.show()
+        else:
+            self.window.hide()
 
     def hotkeyRegister(self):
         @functools.wraps(self.hotkeyRegister)
@@ -424,10 +590,14 @@ class MusicPlayer:
         register(self.hotkeys["next"], self.nextMusic)
         register(self.hotkeys["pause"], self.toggleMusic)
         register(self.hotkeys["toggle_lyric"], self.recreateLyricThread, args=(True,))
-        register(self.hotkeys["close_main_window"], os._exit, args=(0,))
+        register(self.hotkeys["toggle_musicplayer"], self.toggleMainWindow)
 
     def source_release(self):
         log.info("释放了所有资源")
+        self.terminated = True
+        self.nextMusic()
         self.lyric.destroy()
-        del self.music
         del self.lyric
+
+
+log.info("MusicPlayer初始化完成")
