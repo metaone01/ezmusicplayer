@@ -14,7 +14,7 @@ class Mode(Core.QEasingCurve):
 
 class WindowAnimation:
     def __init__(self) -> None:
-        self.queue:set[int] = set()
+        self.animations = list()
 
     # def slideDown(self, mode: Mode):  # TODO
     #     animation = Core.QPropertyAnimation(self.window, b"geometry")
@@ -38,49 +38,49 @@ class WindowAnimation:
     #     animation.start()
 
     def fadeIn(self, window: Widgets.QWidget, mode: Mode, animation_time, slice=20):
-        while id(window) in self.queue:
+        while id(window) in self.animations:
             sleep(0.5)
-        self.queue.add(id(window))
+        self.animations.append(id(window))
         for i in range(0, 100, 100 // slice):
             window.setWindowOpacity(i / 100)
             sleep(animation_time / slice)
-        self.queue.remove(id(window))
+        self.animations.remove(id(window))
 
     def fadeOut(self, window: Widgets.QWidget, mode: Mode, animation_time, slice=20):
-        while id(window) in self.queue:
+        while id(window) in self.animations:
             sleep(0.5)
-        self.queue.add(id(window))
+        self.animations.append(id(window))
         for i in range(100, 0, -100 // slice):
             window.setWindowOpacity(i / 100)
             sleep(animation_time / slice)
         window.setWindowOpacity(0)
-        self.queue.remove(id(window))
+        self.animations.remove(id(window))
 
 
 class ObjectAnimation:
     def __init__(self) -> None:
-        self.queue:set[int] = set()
+        self.animations = list()
 
     def fadeOut(self,_object:Widgets.QAbstractButton, mode: Mode, animation_time, slice=20):
-        while id(_object) in self.queue:
+        while id(_object) in self.animations:
             sleep(0.5)
-        self.queue.add(id(_object))
+        self.animations.append(id(_object))
         opacity = Widgets.QGraphicsOpacityEffect()
         _object.setGraphicsEffect(opacity)
         for i in range(100, 0, -100 // slice):
             opacity.setOpacity(i / 100)
             sleep(animation_time / slice)
         opacity.setOpacity(0)
-        self.queue.remove(id(_object))
+        self.animations.remove(id(_object))
 
     def fadeIn(self,_object, mode: Mode, animation_time, slice=20):
-        while id(_object) in self.queue:
+        while id(_object) in self.animations:
             sleep(0.5)
-        self.queue.add(id(_object))
+        self.animations.append(id(_object))
         opacity = Widgets.QGraphicsOpacityEffect()
         opacity.setOpacity(0)
         _object.setGraphicsEffect(opacity)
         for i in range(0, 100, 100 // slice):
             opacity.setOpacity(i / 100)
             sleep(animation_time / slice)
-        self.queue.remove(id(_object))
+        self.animations.remove(id(_object))

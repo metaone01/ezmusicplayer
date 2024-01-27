@@ -1,8 +1,7 @@
 import json
 from typing import Any
-import PySide6.QtCore as Core
+from darkdetect import isDark  # type:ignore[import-untyped]
 import PySide6.QtGui as Gui
-import PySide6.QtWidgets as Widgets
 
 
 class SysInfo:
@@ -19,8 +18,13 @@ with open(f"./languages/{SETTINGS['language']}.json", encoding="utf-8") as f:
 with open("./settings/hotkeys.json") as f:
     HOTKEYS = json.load(f)
 
-SKIN: str = SETTINGS["skin"]
+__SKIN: str = SETTINGS["skin"]
 DEBUG: bool = SETTINGS["debug"]
+
+if __SKIN == "AUTO":
+    SKIN = "default-dark" if isDark else "default-light"
+else:
+    SKIN = __SKIN
 
 
 def qssReader(skin: str, name: str):

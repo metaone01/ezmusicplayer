@@ -1,0 +1,8 @@
+QWidget {
+    background-color:rgba(200,0,200,255)
+}
+
+QPushButton#MusicListButton {
+    background-color:rgba(0,0,0,0);
+    color:white
+}

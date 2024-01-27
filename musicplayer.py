@@ -32,6 +32,7 @@ with open("./settings/musiclist.json", encoding="utf-8") as f:
 with open("./settings/musicplayer.json", encoding="utf-8") as f:
     _SETTINGS: dict = json.load(f)
 
+
 def changeSetting(key: str, value: Any):
     global _SETTINGS
     _SETTINGS[key] = value
@@ -235,7 +236,7 @@ class LyricWindow:
         self.showed = False
         # ObjectAnimation(self.label).fadeOut(Mode.LINEAR,self.animation_time)
         # win_animation.fadeOut(self.window,Mode.EASE_IN_OUT, self.animation_time)
-        self.window.close()
+        self.window.hide()
 
     def destroy(self):
         log.info("销毁了歌词窗口")
@@ -321,13 +322,20 @@ class MusicSyncTimer:
 
 
 class MusicPlayer:
-
     def __init__(self, noti_queue: Queue) -> None:
-        self.modes = [
-            (PlayMode.repeat,Gui.QPixmap(f'./skins/{SKIN}/image/MusicPlayer/repeat.png')),
-            (PlayMode.sequential,Gui.QPixmap(f'./skins/{SKIN}/image/MusicPlayer/sequential.png')),
-            (PlayMode.loop,Gui.QPixmap(f'./skins/{SKIN}/image/MusicPlayer/loop.png')),
-            (PlayMode.random,Gui.QPixmap(f'./skins/{SKIN}/image/MusicPlayer/random.png'))
+        self.modes = {
+            PlayMode.repeat: Gui.QPixmap(f"./skin/{SKIN}/image/MusicPlayer/repeat.png"),
+            PlayMode.sequential: Gui.QPixmap(
+                f"./skin/{SKIN}/image/MusicPlayer/sequential.png"
+            ),
+            PlayMode.loop: Gui.QPixmap(f"./skin/{SKIN}/image/MusicPlayer/loop.png"),
+            PlayMode.random: Gui.QPixmap(f"./skin/{SKIN}/image/MusicPlayer/random.png"),
+        }
+        self.mode_order = [
+            PlayMode.repeat,
+            PlayMode.sequential,
+            PlayMode.loop,
+            PlayMode.random,
         ]
         self.lyric_thread: Thread  # warning:only for hint
         self.init()
@@ -365,15 +373,44 @@ class MusicPlayer:
         self.volume_btn = Widgets.QPushButton()
         self.volume_icon = Gui.QPixmap(f"./skin/{SKIN}/image/MusicPlayer/volume.png")
         self.mode_btn = Widgets.QPushButton()
-        self.mode_icon = Gui.QPixmap(f"./skin/{SKIN}/image/MusicPlayer/{self.mode}.png")
         self.list_btn = Widgets.QPushButton()
         self.list_icon = Gui.QPixmap(f"./skin/{SKIN}/image/MusicPlayer/list.png")
         self.list = Widgets.QWidget()
-        self.list_layout = Widgets.QVBoxLayout()
+        self.list_scroll_area = Widgets.QScrollArea(self.list)
+        self.list_layout = Widgets.QVBoxLayout(self.list_scroll_area)
+        self.list_layout.setAlignment(Core.Qt.AlignmentFlag.AlignTop)
+        # self.list_layout.setSpacing(0)
+        self.list_scroll_area.setHorizontalScrollBarPolicy(
+            Core.Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
+        self.buttons: dict[str, str] = dict()
+        self.window.setObjectName("MusicPlayer")
+        self.window.setWindowFlags(
+            self.window.windowFlags()
+            | Core.Qt.WindowType.FramelessWindowHint
+            | Core.Qt.WindowType.Tool
+            | Core.Qt.WindowType.WindowStaysOnTopHint
+        )
         self.max_width, self.max_height = SysInfo.getDisplayGeometry()
-        self.window.setGeometry(Core.QRect(self.max_width // 2 - 128, 0, 128, 50))
-        self.volume.setGeometry(Core.QRect(self.max_width // 2 - 34, 0, 30, 20))
-        self.list.setGeometry(Core.QRect(self.max_width // 2, 0, 50, 100))#BUG
+        self.window.setStyleSheet(qssReader(SKIN, "MusicPlayer_Main"))
+        self.volume.setStyleSheet(qssReader(SKIN, "MusicPlayer_Volume"))
+        self.list.setStyleSheet(qssReader(SKIN, "MusicPlayer_Musiclist"))
+        self.window.setSizePolicy(
+            Widgets.QSizePolicy.Policy.Fixed, Widgets.QSizePolicy.Policy.Fixed
+        )
+        self.volume.setSizePolicy(
+            Widgets.QSizePolicy.Policy.Fixed, Widgets.QSizePolicy.Policy.Fixed
+        )
+        self.list.setSizePolicy(
+            Widgets.QSizePolicy.Policy.Fixed, Widgets.QSizePolicy.Policy.Fixed
+        )
+        self.window.setFixedSize(Core.QSize(256, 50))
+        self.volume.setFixedSize(Core.QSize(30, 10))
+        self.list.setFixedSize(256, 600)
+        self.list_scroll_area.setMinimumSize(Core.QSize(256,600))#TODO
+        self.window.move(Core.QPoint(self.max_width // 2 - 128, 0))
+        self.volume.move(Core.QPoint(self.max_width // 2 - 34, 0))
+        self.list.move(Core.QPoint(self.max_width // 2 - 128, 50))
         self.prev_btn.clicked.connect(self.prevMusic)
         self.pause_btn.clicked.connect(self.toggleMusic)
         self.next_btn.clicked.connect(self.nextMusic)
@@ -383,17 +420,13 @@ class MusicPlayer:
         self.pause_btn.setIcon(self.pause_icon)
         self.next_btn.setIcon(self.next_icon)
         self.volume_btn.setIcon(self.volume_icon)
-        self.mode_btn.setIcon(self.mode_icon)#BUG
+        self.mode_btn.setIcon(self.modes[self.mode])
         self.list_btn.setIcon(self.list_icon)
-        self.window.setStyleSheet(f"./skin/{SKIN}/MusicPlayer_Main.qss")#TODO
-        self.window.setWindowFlags(
-            self.window.windowFlags()
-            | Core.Qt.WindowType.FramelessWindowHint
-            | Core.Qt.WindowType.Tool
-            | Core.Qt.WindowType.WindowStaysOnTopHint
-        )
         self.window.setLayout(self.layout)
-        self.layout.addWidget(self.icon)
+        self.icon.setParent(self.window)
+        self.icon.resize(50, 50)
+        self.icon.move(0, 0)
+        self.layout.addSpacing(60)
         self.layout.addWidget(self.label)
         self.layout.addWidget(self.prev_btn)
         self.layout.addWidget(self.pause_btn)
@@ -401,44 +434,56 @@ class MusicPlayer:
         self.layout.addWidget(self.volume_btn)
         self.layout.addWidget(self.mode_btn)
         self.layout.addWidget(self.list_btn)
-        self.volume.setStyleSheet(f"./skin/{SKIN}/MusicPlayer_Volume.qss")
-        self.list.setStyleSheet(f"./skin/{SKIN}/MusicPlayer_Musiclist.qss")
         self.list.setWindowFlags(
             self.window.windowFlags()
             | Core.Qt.WindowType.FramelessWindowHint
             | Core.Qt.WindowType.Tool
             | Core.Qt.WindowType.WindowStaysOnTopHint
         )
-        self.list.setLayout(self.list_layout)
-        for file, name in MUSICS.items():
-            new = Widgets.QPushButton()
-            new.setObjectName("MusicListButton")
-            new.setText(name)
-            new.clicked.connect(lambda: self.playMusic(file))#BUG
-            self.list_layout.addWidget(new)
 
+
+        for num,(file, name) in enumerate(MUSICS.items()):
+            exec(f"musiclist_button_index{num} = Widgets.QPushButton()\n"+
+                f"musiclist_button_index{num}.setSizePolicy(Widgets.QSizePolicy.Policy.Fixed,Widgets.QSizePolicy.Policy.Fixed)\n"+
+                f"musiclist_button_index{num}.setFixedSize(Core.QSize(256,20))\n"+
+                f"musiclist_button_index{num}.setObjectName('MusicListButton')\n"+
+                f"musiclist_button_index{num}.setText(name)\n"+
+                f"musiclist_button_index{num}.clicked.connect(lambda:globals()['self'].musicListGenerator({num}))\n"+
+                f"self.list_layout.addWidget(musiclist_button_index{num})",{"Widgets":Widgets,"Core":Core,"self":self},locals())
+        self.window.setWindowOpacity(0.9)
+        self.list.setWindowOpacity(0)
+        self.list.show()
+        self.list.hide()
+        self.list.setWindowOpacity(0.7)
+        log.info("MusicPlayer初始化完成")
+
+    def musicListGenerator(self,num):
+        self.list.hide()
+        self.playMusic(MUSIC_LIST[num])
     def getMusicList(self, file: str | None = None):
         mode = self.mode
+        if not hasattr(self,"cur_musiclist"):
+            self.cur_musiclist = list()
         if file:
             self.last_music = file
         else:
-            self.music_count = 0
-        if self.last_music == '':
+            self.music_count = -1
+        if self.last_music == "":
             self.last_music = MUSIC_LIST[0]
         if mode == PlayMode.repeat:
             self.cur_musiclist = [self.last_music]
         elif mode == PlayMode.sequential:
             if file:
-                self.cur_musiclist = list()
-            else:
                 self.cur_musiclist.insert(self.music_count + 1, self.last_music)
+            else:
+                self.cur_musiclist = MUSIC_LIST
         elif mode == PlayMode.loop:
             if file:
-                self.cur_musiclist = list()
-            else:
                 self.cur_musiclist.insert(self.music_count + 1, self.last_music)
+            else:
+                self.cur_musiclist = MUSIC_LIST
         elif mode == PlayMode.random:
-            cur_musiclist = MUSIC_LIST
+            cur_musiclist = MUSIC_LIST.copy()
             random.shuffle(cur_musiclist)
             self.cur_musiclist = cur_musiclist
 
@@ -452,6 +497,7 @@ class MusicPlayer:
 
     def playMusic(self, file):
         self.getMusicList(file)
+        log.info(f"播放了{file}")
         self.nextMusic()
 
     def run(self) -> None:
@@ -473,6 +519,8 @@ class MusicPlayer:
             self.recreateLyricThread()
             self.audio_analyzer_thread.start()
             self.play_thread.start()
+            self.last_music = music_path
+            changeSetting("last_music",self.last_music)
             self.audio_analyzer_thread.join(0)
             self.play_thread.join()
             self.music_count += 1
@@ -544,6 +592,8 @@ class MusicPlayer:
 
     def prevMusic(self):
         self.music_count -= 2
+        if self.music_count < -1:
+            self.music_count = -1
         self.play.stop()
         log.info("切换到上一首歌曲")
 
@@ -552,17 +602,14 @@ class MusicPlayer:
         log.info("切换到下一首歌曲")
 
     def switchMode(self):
-        new_mode:int|None = None
-        for _index,i in enumerate(self.modes):
-            if i[0] == self.mode:
-                new_mode=_index+1
-                break
-        if new_mode >= len(self.modes):
-            new_mode = 0
-        changeSetting("mode", self.modes[new_mode][0])
-        self.mode_btn.setIcon(self.modes[new_mode][1])
+        index = self.mode_order.index(self.mode) + 1
+        if index >= len(self.mode_order):
+            index -= len(self.mode_order)
+        new_mode = self.mode_order[index]
+        changeSetting("mode", new_mode)
+        self.mode_btn.setIcon(self.modes[new_mode])
         self.getMusicList()
-        log.info(f"修改播放模式为:{self.mode}")
+        log.info(f"修改播放模式为:{new_mode}")
 
     def toggleMusic(self):
         if self.play.paused:
@@ -600,4 +647,8 @@ class MusicPlayer:
         del self.lyric
 
 
-log.info("MusicPlayer初始化完成")
+
+
+if __name__ == "__main__":
+    import main
+    main.main()
