@@ -16,7 +16,7 @@ from mutagen import File
 import random
 
 # from animation import WindowAnimation, Mode,ObjectAnimation
-import pylogger.pylogger as log
+#import pylogger.pylogger as ##--log
 from settings import HOTKEYS, LANG, SKIN, STYLE, SysInfo, qssReader
 from notification import append
 
@@ -65,7 +65,7 @@ class PlayMode:
         if hasattr(self, mode):
             return self.__getattribute__(mode)
         else:
-            log.fatal("意外的播放模式,请检查设置<MusicPlayer_PlayMode>是否正确配置")
+            ##--log.fatal("意外的播放模式,请检查设置<MusicPlayer_PlayMode>是否正确配置")
             os.abort()
 
 
@@ -95,10 +95,10 @@ class LyricWindow:
         self.__sub_init()
 
     def __sub_init(self):
-        log.info(f"正在初始化歌词窗口...")
+        ##--log.info(f"正在初始化歌词窗口...")
         self.window_init()
         self.label_init()
-        log.info(f"歌词窗口初始化完毕")
+        ##--log.info(f"歌词窗口初始化完毕")
 
     def changeStyle(self):
         self.window.setStyleSheet(qssReader(SKIN, "LyricWindow"))
@@ -160,7 +160,7 @@ class LyricWindow:
             self.lyric.append((0, LANG["NO LYRIC"]))
         if self.lyric[-1][0] == 99 * 60 * 1000 and len(self.lyric) > 1:
             self.lyric[-1] = (self.lyric[-2][0] + 2000, self.lyric[-1][1])
-        log.info(f"设定了新的歌词")
+        ##--log.info(f"设定了新的歌词")
         self.lyric_ready = True
 
     def _syncLyric(self):
@@ -169,25 +169,25 @@ class LyricWindow:
             if not self.showed:
                 return
             while not self.lyric_ready:
-                sleep(0.5)
+                sleep(0.1)
             self.label.setText(self.lyric[0][1])
             if self.label_hide:
                 self.labelFadeIn()
             while self.lrc_index < len(self.lyric) and self.showed and not self.refresh:
-                if self.lyric[self.lrc_index][0] + 300 <= self.sync_timer.sync_timer:
+                if self.lyric[self.lrc_index][0] + 100 <= self.sync_timer.sync_timer:
                     self.label.setText(self.lyric[self.lrc_index][1])
                     self.lrc_index += 1
-                sleep(0.5)
+                sleep(0.2)
             else:
                 sleep(2)
                 if not (self.label_hide or self.refresh):
                     self.labelFadeOut()
-                while not self.refresh:
-                    sleep(0.5)
                 self.lrc_index = 0
+                while not self.refresh:
+                    sleep(1)
 
     def labelFadeIn(self):
-        log.info(f"歌词渐入")
+        ##--log.info(f"歌词渐入")
         self.label_hide = False
         # while self.label_lock:
         #     sleep(0.5)
@@ -197,7 +197,7 @@ class LyricWindow:
         self.label.show()
 
     def labelFadeOut(self):
-        log.info(f"歌词渐出")
+        ##--log.info(f"歌词渐出")
         self.label_hide = True
         # while self.label_lock:
         #     sleep(0.5)
@@ -207,39 +207,41 @@ class LyricWindow:
         self.label.hide()
 
     def resizeWindow(self, new_width: int, new_height: int):
-        log.info(
-            f"调整了歌词窗口的大小:({self.width},{self.height}) -> ({new_width},{new_height})"
-        )
+        ##--log.info(
+        #     f"调整了歌词窗口的大小:({self.width},{self.height}) -> ({new_width},{new_height})"
+        # )
         self.width, self.height = new_width, new_height
 
     def moveWindow(self, ax: int, ay: int):
-        log.info(f"移动歌词窗口到({ax},{ay})")
+        ##--log.info(f"移动歌词窗口到({ax},{ay})")
         self.window.move(ax, ay)
 
     def changeLyric(self, lyric: str):
-        log.info(f"修改歌词为{lyric}")
+        ##--log.info(f"修改歌词为{lyric}")
         self.label.setText(lyric)
 
     def toggle(self):
         self.close() if self.showed else self.show()
 
     def show(self):
-        log.info("打开了歌词窗口")
+        ##--log.info("打开了歌词窗口")
         self.showed = True
         # self.window.setWindowOpacity(0)
         self.window.show()
+        self.label.show()
+        self.refresh = True
         # win_animation.fadeIn(self.window,Mode.EASE_IN_OUT, self.animation_time)
         # ObjectAnimation(self.label).fadeIn(Mode.LINEAR,self.animation_time)
 
     def close(self):
-        log.info("关闭了歌词窗口")
+        ##--log.info("关闭了歌词窗口")
         self.showed = False
         # ObjectAnimation(self.label).fadeOut(Mode.LINEAR,self.animation_time)
         # win_animation.fadeOut(self.window,Mode.EASE_IN_OUT, self.animation_time)
         self.window.hide()
 
     def destroy(self):
-        log.info("销毁了歌词窗口")
+        ##--log.info("销毁了歌词窗口")
         self.showed = False
         self.window.close()
         self.window.destroy()
@@ -252,36 +254,37 @@ class MusicSyncTimer:
         self.volume_percent: float = _SETTINGS["volume"]
         self.minimum_volume: float = 0
         self.maximum_volume: float = 100
-        log.info(
-            f"设置音乐播放器音量初始值{self.volume_percent},最小值{self.minimum_volume},最大值{self.maximum_volume}"
-        )
+        ##--log.info(
+        #     f"设置音乐播放器音量初始值{self.volume_percent},最小值{self.minimum_volume},最大值{self.maximum_volume}"
+        # )
         self.paused = False
         self.stopped = False
 
     def play(self, music_path) -> None:
         p = PyAudio()
-        try:
-            music = AudioSegment.from_file(music_path)
-        except:
-            log.fatal("未安装ffmpeg,无法解析音频文件")
-            os.abort()
+        # try:
+        music = AudioSegment.from_file(music_path)
+        # except:
+        #     ##--log.fatal("未安装ffmpeg,无法解析音频文件")
+        #     print("未安装ffmpeg,无法解析音频文件")
+        #     os.abort()
         self.dBFS = int(music.dBFS)
-        log.info(f"获取到音频dBFS数值:{self.dBFS}dBFS")
+        ##--log.info(f"获取到音频dBFS数值:{self.dBFS}dBFS")
         self.framerate = music.frame_rate
-        log.info(f"获取到音频采样率 {self.framerate}Hz")
+        ##--log.info(f"获取到音频采样率 {self.framerate}Hz")
         stream = p.open(
             format=p.get_format_from_width(music.sample_width),
             channels=music.channels,
             rate=music.frame_rate,
             output=True,
         )
-        for chunk in make_chunks(music, 100):
-            self.sync_timer += 100
+        for chunk in make_chunks(music, 200):
+            self.sync_timer += 200
             chunk = chunk + -40 * (1 - self.volume_percent / 100)
             if self.paused:
                 stream.stop_stream()
                 while self.paused:
-                    sleep(0.1)
+                    sleep(0.2)
                     if self.stopped:
                         self.paused = False
                         self.stopped = False
@@ -301,11 +304,11 @@ class MusicSyncTimer:
 
     def pause(self):
         self.paused = True
-        log.info("暂停播放")
+        ##--log.info("暂停播放")
 
     def resume(self):
         self.paused = False
-        log.info("继续播放")
+        ##--log.info("继续播放")
 
     def stop(self):
         self.paused = True
@@ -331,6 +334,7 @@ class MusicPlayer:
         self.window.show()
 
     @property
+    @functools.lru_cache
     def mode(self):
         return PlayMode().get()
 
@@ -447,7 +451,7 @@ class MusicPlayer:
         self.list.item(self.music_count).setSelected(True)
         self.changeListFocusedItem()
         self.list.setWindowOpacity(0.9)
-        log.info("MusicPlayer初始化完成")
+        ##--log.info("MusicPlayer初始化完成")
 
     def musicVolumeInit(self):
         self.volume_slider = Widgets.QSlider(self.window)  # TODO
@@ -489,7 +493,7 @@ class MusicPlayer:
         else:
             self.music_count = -1
         if self.last_music == "":
-            self.last_music = MUSICS[list(MUSICS.keys())[0]]
+            self.last_music = list(MUSICS.keys())[0]
         if mode == PlayMode.repeat:
             self.cur_musiclist = [self.last_music]
         elif mode == PlayMode.sequential:
@@ -513,27 +517,27 @@ class MusicPlayer:
     def toggleVolumeSlider(self):
         if self.volume_slider.isHidden():
             self.volume_slider.show()
-            log.info("显示了音量调节滑块")
+            ##--log.info("显示了音量调节滑块")
         else:
             self.volume_slider.hide()
-            log.info("隐藏了音量调节滑块")
+            ##--log.info("隐藏了音量调节滑块")
 
     def toggleMusicList(self):
         if self.list.isHidden():
             self.list.show()
-            log.info("显示了播放列表")
+            ##--log.info("显示了播放列表")
         else:
             self.list.hide()
-            log.info("隐藏了播放列表")
+            ##--log.info("隐藏了播放列表")
 
     def changeVolumePercent(self, percent: int):
         self.play.volume_percent = percent
-        log.info(f"调整音量为{percent}%")
+        ##--log.info(f"调整音量为{percent}%")
         changeSetting("volume", percent)
 
     def playMusic(self, file):
         self.getMusicList(file)
-        log.info(f"播放了{file}")
+        ##--log.info(f"播放了{file}")
         self.nextMusic()
 
     def changeStyle(self):
@@ -547,7 +551,7 @@ class MusicPlayer:
         self.lyric.changeStyle()
         self.window.repaint()
         self.lyric.window.repaint()
-        log.info("改变了主题颜色")
+        ##--log.info("改变了主题颜色")
 
     def run(self) -> None:
         while not self.terminated:
@@ -612,25 +616,25 @@ class MusicPlayer:
                 Lrc.text = LANG["Unknown"]
             return Lrc
 
-        log.info(f"正在读取{audio}")
+        ##--log.info(f"正在读取{audio}")
         info = File(audio)
         tags: dict = info.__dict__["tags"]
         self.length = info.info.length
-        log.info(f"获取到时长: {self.length}s")
+        ##--log.info(f"获取到时长: {self.length}s")
         self.bitrate = info.info.bitrate // 1000
-        log.info(f"获取到比特率: {self.bitrate}Kbps")
+        ##--log.info(f"获取到比特率: {self.bitrate}Kbps")
         self.title = tags.get(TITLE, Unknown).text[0]
-        log.info(f"获取到标题: {self.title}")
+        ##--log.info(f"获取到标题: {self.title}")
         self.artist = tags.get(ARTIST, Unknown).text[0]
-        log.info(f"获取到艺术家: {self.artist}")
+        ##--log.info(f"获取到艺术家: {self.artist}")
         self.album = tags.get(ALBUM, Unknown).text[0]
-        log.info(f"获取到专辑: {self.album}")
+        ##--log.info(f"获取到专辑: {self.album}")
         self.track = tags.get(TRACK, Unknown).text[0]
-        log.info(f"获取到音轨数: {self.track}")
+        ##--log.info(f"获取到音轨数: {self.track}")
         self.cover_data = tags.get(COVER, Unknown).data
-        log.info(f"获取到封面")
+        ##--log.info(f"获取到封面")
         lyric = tags.get(LYRIC, tryLrcFile(audio)).text
-        log.info(f"获取到歌词")
+        ##--log.info(f"获取到歌词")
         self.lyric_text = (
             f"[0:-1]{self.title} - {self.artist}\n[0:-1]{self.album}\n" + lyric
         )
@@ -659,11 +663,11 @@ class MusicPlayer:
         if self.music_count < -1:
             self.music_count = -1
         self.play.stop()
-        log.info("切换到上一首歌曲")
+        ##--log.info("切换到上一首歌曲")
 
     def nextMusic(self):
         self.play.stop()
-        log.info("切换到下一首歌曲")
+        ##--log.info("切换到下一首歌曲")
 
     def switchMode(self):
         index = self.mode_order.index(self.mode) + 1
@@ -673,7 +677,7 @@ class MusicPlayer:
         changeSetting("mode", new_mode)
         self.mode_btn.setIcon(self.modes[new_mode])
         self.getMusicList()
-        log.info(f"修改播放模式为:{new_mode}")
+        ##--log.info(f"修改播放模式为:{new_mode}")
 
     def toggleMusic(self):
         if self.play.paused:
@@ -716,7 +720,7 @@ class MusicPlayer:
     def hotkeyRegister(self):
         def register(hotkey, func, args=None):
             keyboard.add_hotkey(hotkey, func, args)
-            log.info(f"注册了快捷键{hotkey} -> {func.__name__}")
+            ##--log.info(f"注册了快捷键{hotkey} -> {func.__name__}")
 
         register(self.hotkeys["volume_up"], self.addVolume)
         register(self.hotkeys["volume_down"], self.reduceVolume)
@@ -727,14 +731,14 @@ class MusicPlayer:
         register(self.hotkeys["toggle_musicplayer"], self.toggleMainWindow)
 
     def source_release(self):
-        log.info("释放资源...")
+        ##--log.info("释放资源...")
         self.terminated = True
         self.nextMusic()
         self.lyric.window.destroy()
         self.volume_slider.destroy()
         self.list.destroy()
         self.window.destroy()
-        log.info("资源释放完毕")
+        ##--log.info("资源释放完毕")
         return
 
 

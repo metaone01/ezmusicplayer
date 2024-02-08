@@ -7,5 +7,6 @@
         "pause":"ctrl+alt+space",
         "toggle_lyric":"ctrl+alt+d",
         "toggle_musicplayer":"ctrl+alt+m"
-    }
+    },
+    "close":"ctrl+alt+q"
 }

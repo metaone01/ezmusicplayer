@@ -1,4 +1,4 @@
-import pylogger.pylogger as log
+#import pylogger.pylogger as ##--log
 import PySide6.QtCore as Core
 import PySide6.QtGui as Gui
 import PySide6.QtWidgets as Widgets
@@ -65,9 +65,9 @@ class NotificationWindow:
         self.window.setAttribute(Core.Qt.WidgetAttribute.WA_TranslucentBackground)
 
     def resizeWindow(self, new_width: int, new_height: int):
-        log.info(
-            f"调整了{LANG['Default Notification Window']}的大小:({self.width},{self.height}) -> ({new_width},{new_height})"
-        )
+        ##--log.info(
+        #     f"调整了{LANG['Default Notification Window']}的大小:({self.width},{self.height}) -> ({new_width},{new_height})"
+        # )
         self.width, self.height = new_width, new_height
         self.window.setGeometry(self.max_width - self.width, 0, self.width, self.height)
 
@@ -75,7 +75,7 @@ class NotificationWindow:
         if self.showed:
             return
         self.showed = True
-        log.info(f"{LANG['Default Notification Window']}渐入")
+        ##--log.info(f"{LANG['Default Notification Window']}渐入")
         # self.window.setWindowOpacity(0)
         self.window.show()
         # win_animation.fadeIn(self.window,
@@ -86,7 +86,7 @@ class NotificationWindow:
         if not self.showed:
             return
         self.showed = False
-        log.info(f"{LANG['Default Notification Window']}渐出")
+        ##--log.info(f"{LANG['Default Notification Window']}渐出")
         # win_animation.fadeOut(self.window,
         #     Mode.EASE_IN_OUT, self.default_animation_time
         # )
@@ -96,7 +96,7 @@ class NotificationWindow:
         return #TODO
         while True:
             text, icon, noti_name, alive_time, animation_time = self.queue.get()
-            log.info(f"发送了新通知:{text}")
+            ##--log.info(f"发送了新通知:{text}")
             # self.fadeIn()
             if alive_time is None:
                 alive_time = self.default_show_time
@@ -146,13 +146,13 @@ class NotificationWindow:
                 self.layout.addWidget(frame)
                 frame.show()
                 self.window.repaint()
-                log.info("通知渐入")
+                ##--log.info("通知渐入")
                 # obj_animation.fadeIn(frame,Mode.LINEAR, animation_time)
                 # sleep(alive_time - 2 * animation_time)
                 # obj_animation.fadeOut(frame,Mode.LINEAR, animation_time)
                 def delayFunc(self,frame,alive_time,animation_time):
                     sleep(alive_time-2*animation_time)
-                    log.info("通知渐出")
+                    ##--log.info("通知渐出")
                     frame.hide()
                     self.layout.removeWidget(frame)
                     self.window.repaint()
@@ -161,7 +161,7 @@ class NotificationWindow:
                 if noti_name is not None:
                     label.setObjectName(noti_name)
                 def delayFunc(self,label,alive_time,animation_time):
-                    log.info("通知渐出")
+                    ##--log.info("通知渐出")
                     sleep(alive_time - 2 * animation_time)
                     self.layout.addWidget(label)
                     label.show()

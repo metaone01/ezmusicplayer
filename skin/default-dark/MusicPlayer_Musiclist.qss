@@ -16,7 +16,7 @@ QListWidget::item:selected {
 }
 QListWidget::item:hover {
     background-color:rgba(200,0,200,80%);
-    color:white
+    color:rgb(0,255,255);
 }
 QListWidget:focus {
     outline:none
