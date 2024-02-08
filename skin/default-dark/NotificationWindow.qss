@@ -4,6 +4,6 @@ QLabel {
     color:white
 }
 QFrame#Notification {
-    background-color:rgba(0,0,0, 0.3)
+    background-color:rgba(0,0,0, 30%)
 }
 QLabel#MusicInfo {}

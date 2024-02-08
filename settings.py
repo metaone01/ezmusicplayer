@@ -1,9 +1,8 @@
 import json
 from typing import Any
-from darkdetect import isDark  # type:ignore[import-untyped]
+from darkdetect import isDark # type:ignore[import-untyped]
 import PySide6.QtGui as Gui
-
-
+import PySide6.QtWidgets as Widgets
 class SysInfo:
     @staticmethod
     def getDisplayGeometry():
@@ -17,15 +16,14 @@ with open(f"./languages/{SETTINGS['language']}.json", encoding="utf-8") as f:
     LANG: dict[str, str] = json.load(f)
 with open("./settings/hotkeys.json") as f:
     HOTKEYS = json.load(f)
-
-__SKIN: str = SETTINGS["skin"]
+STYLE = Widgets.QStyleFactory.create(Widgets.QStyleFactory.keys()[0])
 DEBUG: bool = SETTINGS["debug"]
-
-if __SKIN == "AUTO":
-    SKIN = "default-dark" if isDark else "default-light"
-else:
-    SKIN = __SKIN
-
+def changeSkin():
+    global SKIN
+    if type(SETTINGS["skin"]) is dict:
+        SKIN = SETTINGS["skin"]["dark" if isDark() else "light"]
+    else:
+        SKIN = SETTINGS["skin"]
 
 def qssReader(skin: str, name: str):
     with open(f"./skin/{skin}/{name}.qss", encoding="utf-8") as f:
@@ -37,3 +35,6 @@ def changeSetting(key: str, value: Any):
     SETTINGS[key] = value
     with open("./settings/settings.json", "w", encoding="utf-8") as f:
         json.dump(SETTINGS, f)
+
+SKIN:str
+changeSkin()
