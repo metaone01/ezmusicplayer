@@ -3,3 +3,4 @@ logs
 __pycache__
 .mypy_cache
 /main.dist
+/nuitka.ps1

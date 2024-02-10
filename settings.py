@@ -3,6 +3,8 @@ from typing import Any
 from darkdetect import isDark # type:ignore[import-untyped]
 import PySide6.QtGui as Gui
 import PySide6.QtWidgets as Widgets
+
+import pylogger.pylogger as log
 class SysInfo:
     @staticmethod
     def getDisplayGeometry():
@@ -17,7 +19,7 @@ with open(f"./languages/{SETTINGS['language']}.json", encoding="utf-8") as f:
 with open("./settings/hotkeys.json") as f:
     HOTKEYS = json.load(f)
 STYLE = Widgets.QStyleFactory.create(Widgets.QStyleFactory.keys()[0])
-DEBUG: bool = SETTINGS["debug"]
+_DEBUG : bool = SETTINGS["debug"]
 def changeSkin():
     global SKIN
     if type(SETTINGS["skin"]) is dict:
@@ -26,8 +28,12 @@ def changeSkin():
         SKIN = SETTINGS["skin"]
 
 def qssReader(skin: str, name: str):
-    with open(f"./skin/{skin}/{name}.qss", encoding="utf-8") as f:
-        return f.read()
+    try:
+        with open(f"./skin/{skin}/{name}.qss", encoding="utf-8") as f:
+            return f.read()
+    except:
+        log.error(f"无法找到文件./skin/{skin}/{name}.qss")
+        return ""
 
 
 def changeSetting(key: str, value: Any):

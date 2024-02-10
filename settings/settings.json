@@ -1,6 +1,7 @@
 {
     "language": "zh-CN",
-    "debug": true,
+    "version": "0.5.23beta",
+    "debug": false,
     "skin": {
         "light": "default-light",
         "dark": "default-dark"

@@ -3,5 +3,6 @@ QWidget#MusicPlayer {
 }
 
 QPushButton {
-    background-color:transparent
+    background-color:transparent;
+    outline:none
 }
