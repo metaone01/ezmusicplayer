@@ -79,9 +79,11 @@ class LyricWindow:
     def __init__(
         self,
         sync_timer: "MusicSyncTimer",
+        app: Widgets.QApplication,
         animation_time: float = 0.5,
     ):
         self.sync_timer = sync_timer
+        self.app = app
         self.window = Widgets.QWidget()
         self.label = Widgets.QLabel(self.window)
         self.geometry = SysInfo.getDisplayGeometry()
@@ -181,11 +183,12 @@ class LyricWindow:
                     self.lrc_index += 1
                 sleep(0.2)
             else:
-                sleep(2)
+                # self.app.processEvents(Core.QEventLoop.ProcessEventsFlag.AllEvents,200)
                 if not (self.label_hide or self.refresh):
                     self.labelFadeOut()
                 self.lrc_index = 0
                 while not self.refresh:
+                    # self.app.processEvents(Core.QEventLoop.ProcessEventsFlag.AllEvents,200)
                     sleep(1)
 
     def labelFadeIn(self):
@@ -328,22 +331,24 @@ class MusicSyncTimer:
 
 
 class MusicPlayer:
-    def __init__(self, noti_queue: Queue) -> None:
+    def __init__(self, noti_queue: Queue,app:Widgets.QApplication) -> None:
         self.lyric_thread: Thread  # warning:only for hint
+        self.app = app
         self.terminated = False
         self.noti_queue = noti_queue
         self.last_music = _SETTINGS["last_music"]
         self.hotkeys = HOTKEYS["MusicPlayer"]
         self.music_count = 0
-        self.getMusicList()
         self.play = MusicSyncTimer()
-        self.lyric = LyricWindow(self.play)
-        self.hotkeyRegister()
+        self.lyric = LyricWindow(self.play,self.app)
         self.init()
+        self.getMusicList()
+        self.hotkeyRegister()
         self.sub_thread = Thread(target=self.run, name="MusicPlayer",daemon=True)
         self.sub_thread.start()
         self.lyric.show()
         self.window.show()
+        log.info("MusicPlayer初始化完成")
 
     @property
     @functools.lru_cache
@@ -428,11 +433,6 @@ class MusicPlayer:
         self.list_btn.setIcon(self.list_icon)
 
     def musicListInit(self):
-        def _changeMusic(item: Widgets.QListWidgetItem):
-            file = item.text()
-            if file != self.cur_musiclist[self.music_count]:
-                self.playMusic(file)
-
         self.list = Widgets.QListWidget(self.window)
         self.list.setObjectName("MusicPlayerList")
         self.list.setSizePolicy(
@@ -450,7 +450,19 @@ class MusicPlayer:
             | Core.Qt.WindowType.Tool
             | Core.Qt.WindowType.WindowStaysOnTopHint
         )
+        self.list.setWindowOpacity(0.9)
 
+    def regenerateMusiclist(self):
+        def _changeMusic(item: Widgets.QListWidgetItem):
+            file = item.text()
+            if file != self.cur_musiclist[self.music_count]:
+                self.playMusic(file)
+        if self.list.isHidden():
+            self.list.clear()
+        else:
+            self.list.hide()
+            self.list.clear()
+            self.list.show()
         for file in self.cur_musiclist:
             new = Widgets.QListWidgetItem(self.list)
             new.setText(file)
@@ -459,8 +471,6 @@ class MusicPlayer:
         self.list.itemClicked.connect(_changeMusic)
         self.list.item(self.music_count).setSelected(True)
         self.changeListFocusedItem()
-        self.list.setWindowOpacity(0.9)
-        log.info("MusicPlayer初始化完成")
 
     def musicVolumeInit(self):
         self.volume_slider = Widgets.QSlider(self.window)
@@ -522,6 +532,7 @@ class MusicPlayer:
             random.shuffle(cur_musiclist)
             self.cur_musiclist = cur_musiclist
             self.music_count = self.cur_musiclist.index(self.last_music)
+        self.regenerateMusiclist()
 
     def toggleVolumeSlider(self):
         if self.volume_slider.isHidden():
@@ -558,12 +569,13 @@ class MusicPlayer:
         self.volume_slider.setStyleSheet(qssReader(SKIN, "MusicPlayer_Volume"))
         self.setIcon()
         self.lyric.changeStyle()
-        self.window.repaint()
-        self.lyric.window.repaint()
+        self.window.update()
+        self.lyric.window.update()
         log.info("改变了主题颜色")
 
     def run(self) -> None:
         while not self.terminated:
+            self.changeListFocusedItem()
             self.lyric.refresh = True
             music_path = MUSICS[self.cur_musiclist[self.music_count]]
             self.audio_analyzer_thread = Thread(
@@ -586,9 +598,10 @@ class MusicPlayer:
             self.audio_analyzer_thread.join(0)
             self.play_thread.join()
             self.music_count += 1
-            self.changeListFocusedItem()
             if self.music_count > len(self.cur_musiclist) - 1:
                 self.getMusicList()
+                self.music_count = 0
+                self.changeListFocusedItem()
             while len(self.cur_musiclist) == 0:
                 self.getMusicList()
                 sleep(1)

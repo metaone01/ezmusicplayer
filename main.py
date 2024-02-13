@@ -15,7 +15,6 @@ from queue import Queue
 from keyboard import add_hotkey
 from musicplayer import MusicPlayer
 from todo import Time
-
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__))))
 
 
@@ -30,21 +29,24 @@ def themeBroadcast(modules):
 
 class MainWindow:
     def __init__(self):
-        log.init()
         self.app = Widgets.QApplication(sys.argv)
-        self.palette = Widgets.QApplication.palette()
-        style = Widgets.QStyleFactory.create("fusion")
-        self.app.setStyle(style)
         self.window = Widgets.QWidget()
         self.geometry = SysInfo.getDisplayGeometry()
-        self.app.paletteChanged.connect(self.changeTheme)
         self.queue: Queue = Queue()
         self.musicPlayerInit()
         self.todoInit()
         self.notificationWindowInit()
-
+        self.changeThemeTriggerInit()
         add_hotkey(HOTKEYS["close"], self.closeApp)
+
+    def changeThemeTriggerInit(self):
+        self.palette = Widgets.QApplication.palette()
+        style = Widgets.QStyleFactory.create("fusion")
+        self.app.setPalette(self.palette)
+        self.app.setStyle(style)
+        self.app.paletteChanged.connect(self.changeTheme)
         log.info("主题切换触发器已启动")
+        
 
     def changeTheme(self):
         self.app.setPalette(self.palette)
@@ -52,8 +54,7 @@ class MainWindow:
 
     def musicPlayerInit(self):
         log.info("创建音乐播放器...")
-        self.music_player = MusicPlayer(self.queue)
-        atexit.register(self.music_player.source_release)
+        self.music_player = MusicPlayer(self.queue,self.app)
         log.info("完成")
 
     def todoInit(self):
@@ -62,17 +63,19 @@ class MainWindow:
         class Todo(Thread):
             def __init__(
                 self,
-                name: str | None = None,
+                name: str,
+                app:Widgets.QApplication,
                 *,
                 daemon: bool | None = None,
             ) -> None:
                 super().__init__(name=name,daemon=daemon)
+                self.app = app
 
             def run(self):
-                self.time = Time()
+                self.time = Time(self.app)
                 self.time.run()
 
-        self.todo = Todo(name="Todo", daemon=True)
+        self.todo = Todo("Todo",self.app, daemon=True)
         self.todo.start()
 
         log.info("完成")
@@ -88,9 +91,10 @@ class MainWindow:
         log.info("完成")
 
     def closeApp(self):
-        self.app.setQuitOnLastWindowClosed(True)
         log.info("正在关闭窗口...")
         self.window.destroy()
+        self.music_player.source_release()
+        self.todo.time.source_release()
         log.info("正在退出...")
         self.app.exit(0)
         sys.exit(0)
@@ -102,6 +106,11 @@ class MainWindow:
 
 
 if __name__ == "__main__":
+    log.init()
+    if _DEBUG:
+        log.setDebug()
+    else:
+        log.setOff()
     log.info("创建主窗体...")
     window = MainWindow()
     log.info("完成")

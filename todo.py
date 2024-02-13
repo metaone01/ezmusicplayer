@@ -10,7 +10,8 @@ from settings import SKIN, STYLE, qssReader,SysInfo
         
 
 class Time:
-    def __init__(self) -> None:
+    def __init__(self,app:Widgets.QApplication) -> None:
+        self.app = app
         self.clockInit()
         self.todoInit()
 
@@ -92,15 +93,19 @@ class Time:
         while True:
             
             self.time.setText(time.strftime("%Y-%m-%d\n%a%H:%M:%S"))
-            self.window.repaint()
+            self.time.repaint()
             # item = self.todo_window.item(0) #TODO
             # if item:
             #     task_time = time.mktime(time.strptime(item.text()[:20]))
             #     if task_time < time.time():
             #         self.todo_window.removeItemWidget(self.todo_window.item(0))
-            time.sleep(1)
-                
+            time.sleep(1)       
+            # self.app.processEvents(Core.QEventLoop.ProcessEventsFlag.EventLoopExec,1000)      
 
+    def source_release(self):
+        self.window.destroy(True,True)
+        # self.todo_window.destroy(True,True)
+    
     def updateTodoList(self):
         with open("./settings/todo.json",'w',encoding='utf-8') as f:
             json.dump(self.todo,f,ensure_ascii=False,indent=4)
