@@ -5,7 +5,7 @@ import PySide6.QtCore as Core
 import PySide6.QtGui as Gui
 import PySide6.QtWidgets as Widgets
 import os
-from threading import Thread
+from threading import Thread,current_thread
 from time import sleep
 import json
 import keyboard
@@ -67,7 +67,6 @@ class PlayMode:
         else:
             log.fatal("意外的播放模式,请检查设置<MusicPlayer_PlayMode>是否正确配置")
             os.abort()
-
 
 # win_animation = WindowAnimation()
 # obj_animation = ObjectAnimation()
@@ -340,7 +339,7 @@ class MusicPlayer:
         self.init()
         self.getMusicList()
         self.hotkeyRegister()
-        self.sub_thread = Thread(target=self.run, name="MusicPlayer", daemon=True)
+        self.sub_thread = Thread(target=self.player, name="MusicPlayer", daemon=True)
         self.sub_thread.start()
         self.lyric.show()
         self.window.show()
@@ -361,6 +360,8 @@ class MusicPlayer:
         self.volume_btn = Widgets.QPushButton()
         self.mode_btn = Widgets.QPushButton()
         self.list_btn = Widgets.QPushButton()
+        self.cur_thread = hex(id(current_thread()))
+        print(self.cur_thread)
         self.window.setObjectName("MusicPlayer")
         self.window.setStyle(STYLE)
         self.window.setWindowFlags(
@@ -428,7 +429,10 @@ class MusicPlayer:
         self.list_btn.setIcon(self.list_icon)
 
     def musicListInit(self):
-        self.list = Widgets.QListWidget(self.window)
+        self.cur_thread = hex(id(current_thread()))
+        print(self.cur_thread)
+        self.list = Widgets.QListWidget()
+        self.list.setParent(self.window)
         self.list.setObjectName("MusicPlayerList")
         self.list.setSizePolicy(
             Widgets.QSizePolicy.Policy.Fixed, Widgets.QSizePolicy.Policy.Fixed
@@ -451,7 +455,7 @@ class MusicPlayer:
         def _changeMusic(item: Widgets.QListWidgetItem):
             file = item.text()
             if file != self.cur_musiclist[self.music_count]:
-                self.playMusic(file)
+                self.changeMusic(file)
 
         if self.list.isHidden():
             self.list.clear()
@@ -487,14 +491,14 @@ class MusicPlayer:
         self.volume_slider.setMinimum(0)
         self.volume_slider.setMaximum(100)
         self.volume_slider.setSingleStep(1)
-        self.volume_slider.setValue(self.play.volume_percent)
+        self.volume_slider.setValue(int(self.play.volume_percent))
         self.volume_slider.move(Core.QPoint(self.max_width // 2, 50))
         self.volume_slider.valueChanged.connect(self.changeVolumePercent)
         self.volume_slider.setWindowOpacity(0.9)
 
     def musicListGenerator(self, num):
         self.list.hide()
-        self.playMusic(MUSICS[num])
+        self.changeMusic(MUSICS[num])
 
     def getMusicList(self, file: str | None = None):
         mode = self.mode
@@ -551,7 +555,7 @@ class MusicPlayer:
         log.info(f"调整音量为{volume}%")
         changeSetting("volume", volume)
 
-    def playMusic(self, file):
+    def changeMusic(self, file):
         self.getMusicList(file)
         log.info(f"播放了{file}")
         self.nextMusic()
@@ -569,7 +573,7 @@ class MusicPlayer:
         self.lyric.window.update()
         log.info("改变了主题颜色")
 
-    def run(self) -> None:
+    def player(self) -> None:
         while not self.terminated:
             self.changeListFocusedItem()
             self.lyric.refresh = True
@@ -601,6 +605,11 @@ class MusicPlayer:
             while len(self.cur_musiclist) == 0:
                 self.getMusicList()
                 sleep(1)
+
+    def exec(self):
+        while not self.terminated:
+            sleep(1)
+            self.app.processEvents()
 
     def recreateLyricThread(self, toggle: bool = False):
         if self.lyric.showed:
@@ -725,7 +734,7 @@ class MusicPlayer:
         if self.play.volume_percent == 0:
             self.play.resume()
         self.play.volume_percent += level
-        self.volume_slider.setValue(self.play.volume_percent)
+        self.volume_slider.setValue(int(self.play.volume_percent))
 
     def reduceVolume(self, level: float = 5):
         if self.play.volume_percent <= self.play.minimum_volume:
@@ -733,7 +742,7 @@ class MusicPlayer:
                 return
             self.play.pause()
         self.play.volume_percent -= level
-        self.volume_slider.setValue(self.play.volume_percent)
+        self.volume_slider.setValue(int(self.play.volume_percent))
 
     def hotkeyRegister(self):
         def register(hotkey, func, args=None):

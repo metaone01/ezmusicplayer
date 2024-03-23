@@ -5,5 +5,8 @@
     "skin": {
         "light": "default-light",
         "dark": "default-dark"
-    }
+    },
+    "music_database": [
+        "G:/Songs/music"
+    ]
 }

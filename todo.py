@@ -1,4 +1,5 @@
 import json
+from queue import Queue
 import PySide6.QtCore as Core
 import PySide6.QtGui as Gui
 import PySide6.QtWidgets as Widgets
@@ -10,8 +11,9 @@ from settings import SKIN, STYLE, qssReader,SysInfo
         
 
 class Time:
-    def __init__(self,app:Widgets.QApplication) -> None:
+    def __init__(self,app:Widgets.QApplication,noti_queue:Queue) -> None:
         self.app = app
+        self.noti_queue = noti_queue
         self.clockInit()
         self.todoInit()
 
@@ -37,7 +39,7 @@ class Time:
         self.time.setFixedSize(Core.QSize(256,100))
         self.time.move(0,0)
 
-    def changeStyle(self):
+    def changeTheme(self):
         global SKIN
         from settings import SKIN
         self.window.setStyleSheet(qssReader(SKIN,"Clock"))
@@ -88,7 +90,7 @@ class Time:
             self.add_todo_window = Widgets.QWidget()
             
 
-    def run(self):
+    def exec(self):
         self.window.show()
         while True:
             

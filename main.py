@@ -1,6 +1,7 @@
 from typing import Any, Callable, Mapping
 import PySide6.QtCore as Core
 import PySide6.QtGui as Gui
+from PySide6.QtUiTools import QUiLoader
 import PySide6.QtWidgets as Widgets
 import sys
 from threading import Thread
@@ -30,14 +31,24 @@ def themeBroadcast(modules):
 class MainWindow:
     def __init__(self):
         self.app = Widgets.QApplication(sys.argv)
-        self.window = Widgets.QWidget()
         self.geometry = SysInfo.getDisplayGeometry()
-        self.queue: Queue = Queue()
+        self.noti_queue: Queue = Queue()
         self.musicPlayerInit()
         self.todoInit()
         self.notificationWindowInit()
         self.changeThemeTriggerInit()
         add_hotkey(HOTKEYS["close"], self.closeApp)
+
+    def createMainWindow(self):
+        self.window = Widgets.QWidget()
+        self.main_layout = Widgets.QHBoxLayout()
+        self.createLeftLayout()
+        self.left_layout
+        
+    def createLeftLayout(self):
+        self.left_layout = Widgets.QLayout(self.window)
+        
+        
 
     def changeThemeTriggerInit(self):
         self.palette = Widgets.QApplication.palette()
@@ -54,7 +65,7 @@ class MainWindow:
 
     def musicPlayerInit(self):
         log.info("创建音乐播放器...")
-        self.music_player = MusicPlayer(self.queue,self.app)
+        self.music_player = MusicPlayer(self.noti_queue,self.app)
         log.info("完成")
 
     def todoInit(self):
@@ -65,17 +76,19 @@ class MainWindow:
                 self,
                 name: str,
                 app:Widgets.QApplication,
+                noti_queue:Queue,
                 *,
                 daemon: bool | None = None,
             ) -> None:
                 super().__init__(name=name,daemon=daemon)
                 self.app = app
+                self.noti_queue = noti_queue
 
             def run(self):
-                self.time = Time(self.app)
-                self.time.run()
+                self.time = Time(self.app,self.noti_queue)
+                self.time.exec()
 
-        self.todo = Todo("Todo",self.app, daemon=True)
+        self.todo = Todo("Todo",self.app, self.noti_queue,daemon=True)
         self.todo.start()
 
         log.info("完成")
@@ -84,7 +97,7 @@ class MainWindow:
         log.info(f"创建通知窗口...")
         Thread(
             target=NotificationWindow,
-            args=(self.queue,),
+            args=(self.noti_queue,),
             daemon=True,
             name="Notification Window",
         ).start()

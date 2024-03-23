@@ -147,6 +147,9 @@
        <height>21</height>
       </rect>
      </property>
+     <property name="acceptDrops">
+      <bool>true</bool>
+     </property>
     </widget>
     <widget class="QLabel" name="label_2">
      <property name="geometry">
@@ -183,7 +186,7 @@
       <bool>false</bool>
      </property>
      <property name="text">
-      <string>TextLabel</string>
+      <string/>
      </property>
      <property name="textInteractionFlags">
       <set>Qt::TextEditorInteraction</set>
