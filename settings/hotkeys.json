@@ -6,7 +6,9 @@
         "prev":"ctrl+alt+left",
         "pause":"ctrl+alt+space",
         "toggle_lyric":"ctrl+alt+d",
-        "toggle_musicplayer":"ctrl+alt+m"
+        "toggle_musicplayer":"ctrl+alt+m",
+        "fast_forward":"ctrl+right",
+        "fast_backward":"ctrl+left"
     },
     "close":"ctrl+alt+q"
 }

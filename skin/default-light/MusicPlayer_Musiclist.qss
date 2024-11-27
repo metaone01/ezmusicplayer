@@ -1,17 +1,15 @@
 QListWidget {
     background-color:rgba(0,200,200,50%);
     font-size:20px;
-    /* font-weight:bold; */
     font-style:"Arial";
     color:white
 }
-QListWidget:hover {
+/* QListWidget:hover {
     background-color:rgba(0,200,200,100%);
     font-size:20px;
-    /* font-weight:bold; */
     font-style:"Arial";
     color:white
-}
+} */
 QListWidget::item {
     background-color:transparent;
     height:40px;

@@ -1,21 +1,22 @@
+from generatemusicmist import generate
+from pylogger.pylogger import Logger
 from typing import Any, Callable, Mapping
 import PySide6.QtCore as Core
 import PySide6.QtGui as Gui
-from PySide6.QtUiTools import QUiLoader
 import PySide6.QtWidgets as Widgets
 import sys
 from threading import Thread
 
 # from animation import WindowAnimation, ObjectAnimation
 from notification import NotificationWindow
-import pylogger.pylogger as log
 import atexit
 import os
-from settings import HOTKEYS, SysInfo, LANG, SKIN, _DEBUG
+from settings import HOTKEYS, SETTINGS, SysInfo, LANG, SKIN, _DEBUG, log
 from queue import Queue
 from keyboard import add_hotkey
 from musicplayer import MusicPlayer
 from todo import Time
+
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__))))
 
 
@@ -37,27 +38,27 @@ class MainWindow:
         self.todoInit()
         self.notificationWindowInit()
         self.changeThemeTriggerInit()
-        add_hotkey(HOTKEYS["close"], self.closeApp)
+        # add_hotkey(HOTKEYS["close"], self.closeApp)
 
     def createMainWindow(self):
         self.window = Widgets.QWidget()
         self.main_layout = Widgets.QHBoxLayout()
         self.createLeftLayout()
-        self.left_layout
-        
+        self.left_layout  # TODO
+
     def createLeftLayout(self):
         self.left_layout = Widgets.QLayout(self.window)
-        
-        
 
     def changeThemeTriggerInit(self):
-        self.palette = Widgets.QApplication.palette()
-        style = Widgets.QStyleFactory.create("fusion")
-        self.app.setPalette(self.palette)
-        self.app.setStyle(style)
-        self.app.paletteChanged.connect(self.changeTheme)
-        log.info("主题切换触发器已启动")
-        
+        if SETTINGS["theme"] == "auto":
+            self.palette = Widgets.QApplication.palette()
+            style = Widgets.QStyleFactory.create("fusion")
+            self.app.setPalette(self.palette)
+            self.app.setStyle(style)
+            self.app.paletteChanged.connect(self.changeTheme)
+            log.info("主题切换触发器：自动")
+        else:
+            log.info("主题切换触发器：手动")
 
     def changeTheme(self):
         self.app.setPalette(self.palette)
@@ -65,7 +66,7 @@ class MainWindow:
 
     def musicPlayerInit(self):
         log.info("创建音乐播放器...")
-        self.music_player = MusicPlayer(self.noti_queue,self.app)
+        self.music_player = MusicPlayer(self.noti_queue, self.app)
         log.info("完成")
 
     def todoInit(self):
@@ -75,22 +76,21 @@ class MainWindow:
             def __init__(
                 self,
                 name: str,
-                app:Widgets.QApplication,
-                noti_queue:Queue,
+                app: Widgets.QApplication,
+                noti_queue: Queue,
                 *,
                 daemon: bool | None = None,
             ) -> None:
-                super().__init__(name=name,daemon=daemon)
+                super().__init__(name=name, daemon=daemon)
                 self.app = app
                 self.noti_queue = noti_queue
 
             def run(self):
-                self.time = Time(self.app,self.noti_queue)
+                self.time = Time(self.app, self.noti_queue)
                 self.time.exec()
 
-        self.todo = Todo("Todo",self.app, self.noti_queue,daemon=True)
+        self.todo = Todo("Todo", self.app, self.noti_queue, daemon=True)
         self.todo.start()
-
         log.info("完成")
 
     def notificationWindowInit(self):
@@ -119,11 +119,13 @@ class MainWindow:
 
 
 if __name__ == "__main__":
-    log.init()
     if _DEBUG:
-        log.setDebug()
+        log.setLevel(Logger.mode.DEBUG)
     else:
-        log.setOff()
+        log.setLevel(Logger.mode.OFF)
+    log.info("刷新音频数据库...")
+    generate()
+    log.info("完成")
     log.info("创建主窗体...")
     window = MainWindow()
     log.info("完成")

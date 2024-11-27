@@ -16,8 +16,7 @@ from mutagen import File
 import random
 
 # from animation import WindowAnimation, Mode,ObjectAnimation
-import pylogger.pylogger as log
-from settings import HOTKEYS, LANG, SKIN, STYLE, SysInfo, qssReader
+from settings import HOTKEYS, LANG, SKIN, STYLE, SysInfo, qssReader, log
 from notification import append
 
 TITLE = "TIT2"
@@ -39,8 +38,12 @@ MUSICS = dict()
 for audio in MUSIC_LIST:
     info = File(audio)
     tags: dict = info.__dict__["tags"]
-    title = tags.get(TITLE, Unknown).text[0]
-    artist = tags.get(ARTIST, Unknown).text[0]
+    if tags is not None:
+        title = tags.get(TITLE, Unknown).text[0]
+        artist = tags.get(ARTIST, Unknown).text[0]
+    else:
+        title = "Unknown"
+        artist = "Unknown"
     MUSICS[f"{title} - {artist}"] = audio
 del MUSIC_LIST
 with open("./settings/musicplayer.json", encoding="utf-8") as f:
@@ -152,16 +155,17 @@ class LyricWindow:
                 continue
             save_to[ms] = save_to.get(ms, "") + "\n" + lyric_text
 
-    def setLyric(self, lyric: str):
+    def setLyric(self, lyric: str, max_length: int):
         self.label.setText(LANG["LOADING LYRIC..."])
         lyric_dict: dict[int, str] = dict()
         [self.__lyricAnalyzer(_lyric, lyric_dict) for _lyric in lyric.splitlines()]
         self.lyric = [(k, v[1:]) for k, v in lyric_dict.items()]
         self.lyric.sort(key=lambda x: x[0])  # type:ignore[call-overload]
-        if len(self.lyric) == 0:
+        if len(self.lyric) == 1:
             self.lyric.append((0, LANG["NO LYRIC"]))
-        if self.lyric[-1][0] == 99 * 60 * 1000 and len(self.lyric) > 1:
-            self.lyric[-1] = (self.lyric[-2][0] + 2000, self.lyric[-1][1])
+        self.lyric[-1] = (self.lyric[-2][0] + 5000, self.lyric[-1][1])
+        self.lyric.append((self.lyric[-1][0] + 2000, self.lyric[0][1]))
+        self.lyric.append((int(max_length * 1000), self.lyric[0][1]))
         log.info(f"设定了新的歌词")
         self.lyric_ready = True
 
@@ -173,8 +177,13 @@ class LyricWindow:
             while not self.lyric_ready:
                 sleep(0.1)
             self.label.setText(self.lyric[0][1])
+            self.sync_lyric()
             if self.label_hide:
                 self.labelFadeIn()
+            if not self.window.isVisible() and not self.showed:
+                self.window.hide()
+            if not self.window.isVisible() and self.showed:
+                self.window.show()
             while self.lrc_index < len(self.lyric) and self.showed and not self.refresh:
                 if self.lyric[self.lrc_index][0] + 100 <= self.sync_timer.sync_timer:
                     self.label.setText(self.lyric[self.lrc_index][1])
@@ -241,7 +250,7 @@ class LyricWindow:
         self.showed = False
         # ObjectAnimation(self.label).fadeOut(Mode.LINEAR,self.animation_time)
         # win_animation.fadeOut(self.window,Mode.EASE_IN_OUT, self.animation_time)
-        self.window.hide()
+        # self.window.hide()
 
     def destroy(self):
         log.info("销毁了歌词窗口")
@@ -250,6 +259,18 @@ class LyricWindow:
         self.window.destroy(True, True)
         return
 
+    def sync_lyric(self):
+        self.lrc_index=0
+        log.info("正在同步歌词...")
+        while (
+            self.lrc_index < len(self.lyric)
+            and self.lyric[self.lrc_index][0] + 100 <= self.sync_timer.sync_timer
+        ):
+            self.label.setText(self.lyric[self.lrc_index][1])
+            self.lrc_index += 1
+        
+        log.info("歌词同步完毕")
+
 
 class MusicSyncTimer:
     def __init__(self) -> None:
@@ -257,6 +278,9 @@ class MusicSyncTimer:
         self.volume_percent: float = _SETTINGS["volume"]
         self.minimum_volume: float = 0
         self.maximum_volume: float = 100
+        self.chunks = []
+        self.chunk_count = 0
+        self.sep = 200
         log.info(
             f"设置音乐播放器音量初始值{self.volume_percent},最小值{self.minimum_volume},最大值{self.maximum_volume}"
         )
@@ -268,6 +292,9 @@ class MusicSyncTimer:
         music = AudioSegment.from_file(music_path)
         self.dBFS = int(music.dBFS)
         log.info(f"获取到音频dBFS数值:{self.dBFS}dBFS")
+        target = _SETTINGS["target_dBFS"]
+        if _SETTINGS["balance"]:
+            log.info(f"已开启音量自动平衡,目前dBFS:{target}dBFS")
         self.framerate = music.frame_rate
         log.info(f"获取到音频采样率 {self.framerate}Hz")
         stream = p.open(
@@ -276,29 +303,32 @@ class MusicSyncTimer:
             rate=music.frame_rate,
             output=True,
         )
-        chunks = make_chunks(music, 200)
-        chunk_count = 0
+        self.chunks = make_chunks(music, self.sep)
+        self.chunk_count = 0
         while True:
-            if chunk_count >= len(chunks):
+            if self.chunk_count >= len(self.chunks):
                 break
-            chunk = chunks[chunk_count] + -40 * (1 - self.volume_percent / 100)
-            self.sync_timer += 200
-            if self.paused:
+            chunk = self.chunks[self.chunk_count] + -40 * (
+                1 - self.volume_percent / 100
+            )
+            if _SETTINGS["balance"]:
+                chunk += target - music.dBFS
+            self.sync_timer += self.sep
+            if self.paused or self.stopped:
                 stream.stop_stream()
-                while self.paused:
-                    sleep(0.2)
+                while self.paused or self.stopped:
+                    sleep(self.sep / 1000)
                     if self.stopped:
-                        self.paused = False
                         self.stopped = False
                         break
                 else:
                     stream.start_stream()
                     stream.write(chunk._data)
-                    chunk_count += 1
+                    self.chunk_count += 1
                     continue
             else:
                 stream.write(chunk._data)
-                chunk_count += 1
+                self.chunk_count += 1
                 continue
             break
         self.sync_timer = 0
@@ -307,11 +337,11 @@ class MusicSyncTimer:
         p.terminate()
 
     def setVolume(self, volume: int):
+        if self.volume_percent == 0:
+            self.resume()
         self.volume_percent = volume
         if volume == 0:
             self.pause()
-        else:
-            self.resume()
 
     def pause(self):
         self.paused = True
@@ -322,7 +352,6 @@ class MusicSyncTimer:
         log.info("继续播放")
 
     def stop(self):
-        self.paused = True
         self.stopped = True
 
 
@@ -656,7 +685,7 @@ class MusicPlayer:
         self.lyric_text = (
             f"[0:-1]{self.title} - {self.artist}\n[0:-1]{self.album}\n" + lyric
         )
-        self.lyric.setLyric(self.lyric_text)
+        self.lyric.setLyric(self.lyric_text, self.length)
         icon = Gui.QImage()
         if self.cover_data != LANG["Unknown"]:
             icon.loadFromData(self.cover_data)
@@ -727,6 +756,24 @@ class MusicPlayer:
         self.play.volume_percent += level
         self.volume_slider.setValue(self.play.volume_percent)
 
+    def fastForward(self, second: float = 5):
+        forward = second * 1000 // self.play.sep
+        self.play.chunk_count += forward
+        self.play.sync_timer += forward * self.play.sep
+        log.info(f"快进{second}秒")
+        self.lyric.sync_lyric()
+
+    def fastBackward(self, second: float = 5):
+        backward = second * 1000 // self.play.sep
+        self.play.chunk_count -= backward
+        self.play.sync_timer -= backward * self.play.sep
+        log.info(f"快退{second}秒")
+        if self.play.chunk_count < 0:
+            self.play.chunk_count = 0
+        if self.play.sync_timer < 0:
+            self.play.sync_timer = 0
+        self.lyric.sync_lyric()
+
     def reduceVolume(self, level: float = 5):
         if self.play.volume_percent <= self.play.minimum_volume:
             if self.play.paused:
@@ -742,6 +789,8 @@ class MusicPlayer:
 
         register(self.hotkeys["volume_up"], self.addVolume)
         register(self.hotkeys["volume_down"], self.reduceVolume)
+        register(self.hotkeys["fast_forward"], self.fastForward)
+        register(self.hotkeys["fast_backward"], self.fastBackward)
         register(self.hotkeys["prev"], self.prevMusic)
         register(self.hotkeys["next"], self.nextMusic)
         register(self.hotkeys["pause"], self.toggleMusic)

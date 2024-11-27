@@ -1,5 +1,7 @@
 {
-    "last_music": "Constant Moderato - Arcade Player",
+    "last_music": "First Light - Kizuna AI",
     "mode": "random",
-    "volume": 90
+    "volume": 50,
+    "balance": true,
+    "target_dBFS": -10
 }

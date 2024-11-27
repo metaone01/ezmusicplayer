@@ -7,6 +7,7 @@
         "dark": "default-dark"
     },
     "music_database": [
-        "G:/Songs/music"
-    ]
+        "F:/Music"
+    ],
+    "theme":"light"
 }

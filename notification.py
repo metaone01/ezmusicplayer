@@ -22,7 +22,6 @@ class NotificationWindow:
         fade_in: bool = True,
         fade_out: bool = True,
     ):
-        return
         self.window = Widgets.QWidget()
         self.geometry = SysInfo.getDisplayGeometry()
         self.max_width, self.max_height = self.geometry
@@ -93,7 +92,6 @@ class NotificationWindow:
         self.window.hide()
 
     def run(self):
-        return #TODO
         while True:
             text, icon, noti_name, alive_time, animation_time = self.queue.get()
             ##--log.info(f"发送了新通知:{text}")
@@ -184,4 +182,4 @@ def append(
     animation_time: int | None = None,
 ):
     return
-    queue.put((text, icon, noti_name, alive_time, animation_time))
+    # queue.put((text, icon, noti_name, alive_time, animation_time))

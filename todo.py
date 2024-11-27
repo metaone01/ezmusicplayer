@@ -31,12 +31,12 @@ class Time:
         self.window.setSizePolicy(
             Widgets.QSizePolicy.Policy.Fixed, Widgets.QSizePolicy.Policy.Fixed
         )
-        self.window.setFixedSize(Core.QSize(200, 100))
+        self.window.setFixedSize(Core.QSize(220, 100))
         self.window.setStyle(STYLE)
         self.window.move(0, 0)
         self.time = Widgets.QLabel(self.window)
         self.window.setStyleSheet(qssReader(SKIN, "Clock"))
-        self.time.setFixedSize(Core.QSize(256,100))
+        self.time.setFixedSize(Core.QSize(220,100))
         self.time.move(0,0)
 
     def changeTheme(self):

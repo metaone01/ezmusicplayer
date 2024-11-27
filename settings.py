@@ -1,10 +1,12 @@
 import json
 from typing import Any
-from darkdetect import isDark # type:ignore[import-untyped]
+from darkdetect import isDark  # type:ignore[import-untyped]
 import PySide6.QtGui as Gui
 import PySide6.QtWidgets as Widgets
+import keyboard
+from pylogger.pylogger import Logger
 
-import pylogger.pylogger as log
+
 class SysInfo:
     @staticmethod
     def getDisplayGeometry():
@@ -16,16 +18,20 @@ with open("./settings/settings.json", encoding="utf-8") as f:
     SETTINGS: dict[str, Any] = json.load(f)
 with open(f"./languages/{SETTINGS['language']}.json", encoding="utf-8") as f:
     LANG: dict[str, str] = json.load(f)
-with open("./settings/hotkeys.json") as f:
-    HOTKEYS = json.load(f)
-STYLE = Widgets.QStyleFactory.create(Widgets.QStyleFactory.keys()[0])
-_DEBUG : bool = SETTINGS["debug"]
+STYLE = Widgets.QStyleFactory.create("Windows") 
+_DEBUG: bool = SETTINGS["debug"]
+
+
 def changeSkin():
     global SKIN
     if type(SETTINGS["skin"]) is dict:
-        SKIN = SETTINGS["skin"]["dark" if isDark() else "light"]
+        if(SETTINGS["theme"] == "auto"):
+            SKIN = SETTINGS["skin"]["dark" if isDark() else "light"]
+        else:
+            SKIN = SETTINGS["skin"][SETTINGS["theme"]]
     else:
         SKIN = SETTINGS["skin"]
+
 
 def qssReader(skin: str, name: str):
     try:
@@ -42,5 +48,22 @@ def changeSetting(key: str, value: Any):
     with open("./settings/settings.json", "w", encoding="utf-8") as f:
         json.dump(SETTINGS, f)
 
-SKIN:str
+
+#HOTKEY
+with open("./settings/hotkeys.json") as f:
+    HOTKEYS = json.load(f)
+def setHotkey(hotkey: str, callback: Any, args: Any):
+    keyboard.add_hotkey(hotkey, callback, args, suppress=True)
+
+
+def setHotkeyWithoutSuppress(hotkey: str, callback: Any, args: Any):
+    keyboard.add_hotkey(hotkey, callback, args)
+
+
+def setHotkeyOnRelease(hotkey: str, callback: Any, args: Any):
+    keyboard.add_hotkey(hotkey, callback, args, trigger_on_release=True)
+
+#INIT
+SKIN: str
 changeSkin()
+log = Logger(thread=True)
