@@ -260,25 +260,27 @@ class LyricWindow:
         return
 
     def sync_lyric(self):
-        self.lrc_index=0
+        self.label.hide()
+        self.label.setText(self.lyric[0][1])
         log.info("正在同步歌词...")
+        self.lrc_index=0
         while (
             self.lrc_index < len(self.lyric)
             and self.lyric[self.lrc_index][0] + 100 <= self.sync_timer.sync_timer
         ):
             self.label.setText(self.lyric[self.lrc_index][1])
             self.lrc_index += 1
-        
         log.info("歌词同步完毕")
+        self.label.show()
 
 
 class MusicSyncTimer:
     def __init__(self) -> None:
         self.sync_timer = 0
-        self.volume_percent: float = _SETTINGS["volume"]
-        self.minimum_volume: float = 0
-        self.maximum_volume: float = 100
-        self.chunks = []
+        self.volume_percent: int = _SETTINGS["volume"]
+        self.minimum_volume: int = 0
+        self.maximum_volume: int = 100
+        self.chunks:list = [] # type:ignore[var-annotated]
         self.chunk_count = 0
         self.sep = 200
         log.info(
@@ -748,7 +750,7 @@ class MusicPlayer:
                 item, Widgets.QAbstractItemView.ScrollHint.PositionAtCenter
             )
 
-    def addVolume(self, level: float = 5):
+    def addVolume(self, level: int = 5):
         if self.play.volume_percent >= self.play.maximum_volume:
             return
         if self.play.volume_percent == 0:
@@ -757,14 +759,14 @@ class MusicPlayer:
         self.volume_slider.setValue(self.play.volume_percent)
 
     def fastForward(self, second: float = 5):
-        forward = second * 1000 // self.play.sep
+        forward:int = second * 1000 // self.play.sep
         self.play.chunk_count += forward
         self.play.sync_timer += forward * self.play.sep
         log.info(f"快进{second}秒")
         self.lyric.sync_lyric()
 
     def fastBackward(self, second: float = 5):
-        backward = second * 1000 // self.play.sep
+        backward:int = second * 1000 // self.play.sep
         self.play.chunk_count -= backward
         self.play.sync_timer -= backward * self.play.sep
         log.info(f"快退{second}秒")
