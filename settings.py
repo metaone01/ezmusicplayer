@@ -4,7 +4,7 @@ from darkdetect import isDark  # type:ignore[import-untyped]
 import PySide6.QtGui as Gui
 import PySide6.QtWidgets as Widgets
 import keyboard
-from pylogger.pylogger import Logger
+from debuglogger import Logger
 
 
 class SysInfo:
