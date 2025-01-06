@@ -63,6 +63,9 @@ def setHotkeyWithoutSuppress(hotkey: str, callback: Any, args: Any):
 def setHotkeyOnRelease(hotkey: str, callback: Any, args: Any):
     keyboard.add_hotkey(hotkey, callback, args, trigger_on_release=True)
 
+def register(hotkey, func, args=None):
+    keyboard.add_hotkey(hotkey, func, args)
+    log.info(f"注册了快捷键{hotkey} -> {func.__name__}")
 #INIT
 SKIN: str
 changeSkin()

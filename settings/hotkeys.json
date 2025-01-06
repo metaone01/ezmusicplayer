@@ -8,7 +8,8 @@
         "toggle_lyric":"ctrl+alt+d",
         "toggle_musicplayer":"ctrl+alt+m",
         "fast_forward":"ctrl+right",
-        "fast_backward":"ctrl+left"
+        "fast_backward":"ctrl+left",
+        "secure":"ctrl+alt+p"
     },
     "close":"ctrl+alt+q"
 }

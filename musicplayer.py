@@ -14,9 +14,10 @@ from pydub import AudioSegment  # type:ignore
 from pydub.playback import make_chunks  # type:ignore
 from mutagen import File
 import random
+from generatemusicmist import generate
 
 # from animation import WindowAnimation, Mode,ObjectAnimation
-from settings import HOTKEYS, LANG, SKIN, STYLE, SysInfo, qssReader, log
+from settings import HOTKEYS, LANG, SKIN, STYLE, SysInfo, qssReader, log,register
 from notification import append
 
 TITLE = "TIT2"
@@ -32,6 +33,9 @@ class Unknown:
     data: str = LANG["Unknown"]
 
 
+log.info("刷新音频数据库...")
+generate()
+log.info("完成")
 with open("./settings/musiclist.json", encoding="utf-8") as f:
     MUSIC_LIST: list = json.load(f)
 MUSICS = dict()
@@ -92,6 +96,7 @@ class LyricWindow:
         self.width, self.height = self.max_width, 200
         self.lyric: list[tuple[int, str]] = [(0, LANG["NO LYRIC"])]
         self.lrc_index = 0
+        self.window.hide()
         self.showed = False
         self.lyric_ready = False
         self.animation_time = animation_time
@@ -163,17 +168,14 @@ class LyricWindow:
         self.lyric.sort(key=lambda x: x[0])  # type:ignore[call-overload]
         if len(self.lyric) == 1:
             self.lyric.append((0, LANG["NO LYRIC"]))
-        self.lyric[-1] = (self.lyric[-2][0] + 5000, self.lyric[-1][1])
-        self.lyric.append((self.lyric[-1][0] + 2000, self.lyric[0][1]))
-        self.lyric.append((int(max_length * 1000), self.lyric[0][1]))
+        self.lyric.append((self.lyric[-1][0] + 5000, self.lyric[0][1]))
+        self.lyric.append((max_length * 1000+1000, self.lyric[0][1]))
         log.info(f"设定了新的歌词")
         self.lyric_ready = True
 
     def _syncLyric(self):
         while self.showed:
             self.refresh = False
-            if not self.showed:
-                return
             while not self.lyric_ready:
                 sleep(0.1)
             self.label.setText(self.lyric[0][1])
@@ -263,7 +265,7 @@ class LyricWindow:
         self.label.hide()
         self.label.setText(self.lyric[0][1])
         log.info("正在同步歌词...")
-        self.lrc_index=0
+        self.lrc_index = 0
         while (
             self.lrc_index < len(self.lyric)
             and self.lyric[self.lrc_index][0] + 100 <= self.sync_timer.sync_timer
@@ -280,9 +282,9 @@ class MusicSyncTimer:
         self.volume_percent: int = _SETTINGS["volume"]
         self.minimum_volume: int = 0
         self.maximum_volume: int = 100
-        self.chunks:list = [] # type:ignore[var-annotated]
+        self.chunks: list = []  # type:ignore[var-annotated]
         self.chunk_count = 0
-        self.sep = 200
+        self.sep = 350
         log.info(
             f"设置音乐播放器音量初始值{self.volume_percent},最小值{self.minimum_volume},最大值{self.maximum_volume}"
         )
@@ -366,6 +368,7 @@ class MusicPlayer:
         self.last_music = _SETTINGS["last_music"]
         self.hotkeys = HOTKEYS["MusicPlayer"]
         self.music_count = 0
+        self.secured=False
         self.play = MusicSyncTimer()
         self.lyric = LyricWindow(self.play, self.app)
         self.init()
@@ -617,7 +620,7 @@ class MusicPlayer:
                 args=(music_path,),
                 daemon=True,
             )
-            self.recreateLyricThread()
+            self.recreateLyricThread(False,True)
             self.audio_analyzer_thread.start()
             self.play_thread.start()
             self.last_music = self.cur_musiclist[self.music_count]
@@ -633,13 +636,14 @@ class MusicPlayer:
                 self.getMusicList()
                 sleep(1)
 
-    def recreateLyricThread(self, toggle: bool = False):
+    def recreateLyricThread(self, toggle: bool = False,create:bool=False):
         if self.lyric.showed:
             if toggle:
                 self.lyric.close()
                 return
         else:
-            self.lyric.show()
+            if create:
+                self.lyric.show()
         if hasattr(self, "lyric_thread") and self.lyric_thread.is_alive():
             return
         self.lyric_thread = Thread(
@@ -666,7 +670,12 @@ class MusicPlayer:
             return Lrc
 
         log.info(f"正在读取{audio}")
-        info = File(audio)
+        try:
+            info = File(audio)
+        except IOError:
+            log.error("读取失败, 文件不存在")
+            self.nextMusic()
+            return
         tags: dict = info.__dict__["tags"]
         self.length = info.info.length
         log.info(f"获取到时长: {self.length}s")
@@ -759,14 +768,14 @@ class MusicPlayer:
         self.volume_slider.setValue(self.play.volume_percent)
 
     def fastForward(self, second: float = 5):
-        forward:int = second * 1000 // self.play.sep
+        forward: int = second * 1000 // self.play.sep
         self.play.chunk_count += forward
         self.play.sync_timer += forward * self.play.sep
         log.info(f"快进{second}秒")
         self.lyric.sync_lyric()
 
     def fastBackward(self, second: float = 5):
-        backward:int = second * 1000 // self.play.sep
+        backward: int = second * 1000 // self.play.sep
         self.play.chunk_count -= backward
         self.play.sync_timer -= backward * self.play.sep
         log.info(f"快退{second}秒")
@@ -784,11 +793,18 @@ class MusicPlayer:
         self.play.volume_percent -= level
         self.volume_slider.setValue(self.play.volume_percent)
 
-    def hotkeyRegister(self):
-        def register(hotkey, func, args=None):
-            keyboard.add_hotkey(hotkey, func, args)
-            log.info(f"注册了快捷键{hotkey} -> {func.__name__}")
+    def secure(self):
+        self.secured=not self.secured
+        if self.secured:
+            self.lyric.toggle() if self.lyric.showed else None
+            self.play.pause()
+            self.toggleMainWindow() if not self.window.isHidden() else None
+        else:
+            self.lyric.toggle() if not self.lyric.showed else None
+            self.play.resume()
+            self.toggleMainWindow() if self.window.isHidden() else None
 
+    def hotkeyRegister(self):
         register(self.hotkeys["volume_up"], self.addVolume)
         register(self.hotkeys["volume_down"], self.reduceVolume)
         register(self.hotkeys["fast_forward"], self.fastForward)
@@ -796,8 +812,10 @@ class MusicPlayer:
         register(self.hotkeys["prev"], self.prevMusic)
         register(self.hotkeys["next"], self.nextMusic)
         register(self.hotkeys["pause"], self.toggleMusic)
-        register(self.hotkeys["toggle_lyric"], self.recreateLyricThread, args=(True,))
+        register(self.hotkeys["toggle_lyric"], self.recreateLyricThread, args=(True,True))
         register(self.hotkeys["toggle_musicplayer"], self.toggleMainWindow)
+        register(self.hotkeys["secure"], self.secure)
+
 
     def source_release(self):
         log.info("释放资源...")

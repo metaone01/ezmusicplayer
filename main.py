@@ -1,4 +1,3 @@
-from generatemusicmist import generate
 from pylogger.pylogger import Logger
 from typing import Any, Callable, Mapping
 import PySide6.QtCore as Core
@@ -11,9 +10,8 @@ from threading import Thread
 from notification import NotificationWindow
 import atexit
 import os
-from settings import HOTKEYS, SETTINGS, SysInfo, LANG, SKIN, _DEBUG, log
+from settings import HOTKEYS, SETTINGS, SysInfo, LANG, SKIN, _DEBUG, log, register
 from queue import Queue
-from keyboard import add_hotkey
 from musicplayer import MusicPlayer
 from todo import Time
 
@@ -26,7 +24,7 @@ def themeBroadcast(modules):
 
     changeSkin()
     for module in modules:
-        module.changeStyle()
+        module.changeTheme()
 
 
 class MainWindow:
@@ -34,6 +32,7 @@ class MainWindow:
         self.app = Widgets.QApplication(sys.argv)
         self.geometry = SysInfo.getDisplayGeometry()
         self.noti_queue: Queue = Queue()
+        # self.createMainWindow()
         self.musicPlayerInit()
         self.todoInit()
         self.notificationWindowInit()
@@ -94,23 +93,24 @@ class MainWindow:
         log.info("完成")
 
     def notificationWindowInit(self):
-        log.info(f"创建通知窗口...")
-        Thread(
-            target=NotificationWindow,
-            args=(self.noti_queue,),
-            daemon=True,
-            name="Notification Window",
-        ).start()
-        log.info("完成")
+        # log.info(f"创建通知窗口...")
+        # Thread(
+        #     target=NotificationWindow,
+        #     args=(self.noti_queue,),
+        #     daemon=True,
+        #     name="Notification Window",
+        # ).start()
+        # log.info("完成")
+        pass
 
     def closeApp(self):
         log.info("正在关闭窗口...")
-        self.window.destroy()
+        # self.window.destroy()
         self.music_player.source_release()
-        self.todo.time.source_release()
+        # self.todo.time.source_release()
         log.info("正在退出...")
         self.app.exit(0)
-        sys.exit(0)
+        os._exit(0)
 
     def run(self):
         log.info("程序主循环开始")
@@ -123,10 +123,8 @@ if __name__ == "__main__":
         log.setLevel(Logger.mode.DEBUG)
     else:
         log.setLevel(Logger.mode.OFF)
-    log.info("刷新音频数据库...")
-    generate()
-    log.info("完成")
     log.info("创建主窗体...")
     window = MainWindow()
+    register(HOTKEYS["close"],window.closeApp)
     log.info("完成")
     window.run()
