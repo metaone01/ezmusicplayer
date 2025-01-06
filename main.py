@@ -1,4 +1,3 @@
-from pylogger.pylogger import Logger
 from typing import Any, Callable, Mapping
 import PySide6.QtCore as Core
 import PySide6.QtGui as Gui
@@ -120,9 +119,9 @@ class MainWindow:
 
 if __name__ == "__main__":
     if _DEBUG:
-        log.setLevel(Logger.mode.DEBUG)
+        log.setLevel(log.mode.DEBUG)
     else:
-        log.setLevel(Logger.mode.OFF)
+        log.setLevel(log.mode.OFF)
     log.info("创建主窗体...")
     window = MainWindow()
     register(HOTKEYS["close"],window.closeApp)
