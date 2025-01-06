@@ -1,2 +1,2 @@
-conda activate pyqt
+conda activate pygui
 python main.py

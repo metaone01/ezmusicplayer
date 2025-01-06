@@ -1,0 +1,45 @@
+QListWidget {
+    background-color:rgba(200,0,200,50%);
+    font-size:20px;
+    /* font-weight:bold; */
+    font-style:"Arial";
+    color:white
+}
+QListWidget::item {
+    background-color:transparent;
+    height:40px;
+    border-radius:5px
+}
+QListWidget::item:selected {
+    background-color:rgba(200,0,200,80%);
+    color:rgb(0,255,255);
+}
+QListWidget::item:hover {
+    background-color:rgba(200,0,200,80%);
+    color:rgb(0,255,255);
+}
+QListWidget:focus {
+    outline:none
+}
+QScrollBar:vertical {
+    background-color:transparent;
+    width:10px;
+    margin:0px 0px 0px 0px;
+    padding:0px 0px 0px 0px;
+    border:0px 0px 0px 0px
+}
+QScrollBar::handle:vertical {
+    background-color:rgba(255,255,255,50%);
+    border-radius:5px
+}
+QScrollBar::handle:vertical:hover {
+    background-color:rgba(255,255,255,100%);
+    border-radius:5px
+}
+QScrollBar::sub-page,QScrollBar::add-page {
+    background-color:transparent
+}
+QScrollBar::sub-line,QScrollBar::add-line {
+    background-color:transparent;
+    height:0px
+}

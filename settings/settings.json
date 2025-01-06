@@ -1,3 +1,13 @@
 {
-    "language":"zh-CN"
+    "language": "zh-CN",
+    "version": "0.5.23beta",
+    "debug": true,
+    "skin": {
+        "light": "default-light",
+        "dark": "default-dark"
+    },
+    "music_database": [
+        "F:/Music"
+    ],
+    "theme":"auto"
 }

@@ -1,0 +1,8 @@
+QWidget#MusicPlayer {
+    background-color:rgba(0,200,255,100%)
+}
+
+QPushButton {
+    background-color:transparent;
+    outline:none
+}
